@@ -1,0 +1,11 @@
+#! /usr/bin/env ruby
+
+PLATFORM = [ :cpu, :os ].map { |m| Gem::Platform.local.send(m) }.join("-")
+EXECUTABLE = File.expand_path(File.join(__dir__, PLATFORM, "thrust"))
+
+if File.exist?(EXECUTABLE)
+  exec(EXECUTABLE, *ARGV)
+else
+  STDERR.puts("ERROR: Unsupported platform: #{PLATFORM}")
+  exit 1
+end

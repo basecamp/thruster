@@ -1,0 +1,8 @@
+# Ignore Go build artifacts
+/bin
+/dist
+
+# Ignore Gem packaging artifacts
+/pkg
+/exe/
+!/exe/thrust
