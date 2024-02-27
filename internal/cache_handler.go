@@ -7,9 +7,11 @@ import (
 	"time"
 )
 
+type CacheKey uint64
+
 type Cache interface {
-	Get(key uint64) ([]byte, bool)
-	Set(key uint64, value []byte, expiresAt time.Time)
+	Get(key CacheKey) ([]byte, bool)
+	Set(key CacheKey, value []byte, expiresAt time.Time)
 }
 
 type CacheHandler struct {
@@ -60,12 +62,12 @@ func (h *CacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *CacheHandler) deriveCacheKey(r *http.Request) uint64 {
+func (h *CacheHandler) deriveCacheKey(r *http.Request) CacheKey {
 	hash := fnv.New64()
 	hash.Write([]byte(r.Method))
 	hash.Write([]byte(r.URL.Path))
 	hash.Write([]byte(r.URL.Query().Encode()))
-	return hash.Sum64()
+	return CacheKey(hash.Sum64())
 }
 
 func (h *CacheHandler) shouldCacheRequest(r *http.Request) bool {

@@ -14,8 +14,8 @@ type MemoryCacheEntry struct {
 	value          []byte
 }
 
-type MemoryCacheEntryMap map[uint64]*MemoryCacheEntry
-type MemoryCacheKeyList []uint64
+type MemoryCacheEntryMap map[CacheKey]*MemoryCacheEntry
+type MemoryCacheKeyList []CacheKey
 
 type MemoryCache struct {
 	sync.Mutex
@@ -38,7 +38,7 @@ func NewMemoryCache(capacity, maxItemSize int) *MemoryCache {
 	}
 }
 
-func (c *MemoryCache) Set(key uint64, value []byte, expiresAt time.Time) {
+func (c *MemoryCache) Set(key CacheKey, value []byte, expiresAt time.Time) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -62,7 +62,7 @@ func (c *MemoryCache) Set(key uint64, value []byte, expiresAt time.Time) {
 	c.size += len(value)
 }
 
-func (c *MemoryCache) Get(key uint64) ([]byte, bool) {
+func (c *MemoryCache) Get(key CacheKey) ([]byte, bool) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -78,7 +78,7 @@ func (c *MemoryCache) Get(key uint64) ([]byte, bool) {
 }
 
 func (c *MemoryCache) evictOldestItem() {
-	var oldestKey uint64
+	var oldestKey CacheKey
 	var oldestIndex int
 	var oldest time.Time
 

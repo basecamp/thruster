@@ -68,9 +68,9 @@ func BenchmarkCache_populating_small_objects(b *testing.B) {
 	payload := make([]byte, KB)
 	expires := time.Now().Add(1 * time.Hour)
 
-	for i := 0; i < b.N; i++ {
-		c.Set(uint64(i), payload, expires)
-		c.Get(uint64(i))
+	for i := CacheKey(0); i < CacheKey(b.N); i++ {
+		c.Set(i, payload, expires)
+		c.Get(i)
 	}
 }
 
@@ -79,8 +79,8 @@ func BenchmarkCache_populating_large_objects(b *testing.B) {
 	payload := make([]byte, 512*KB)
 	expires := time.Now().Add(1 * time.Hour)
 
-	for i := 0; i < b.N; i++ {
-		c.Set(uint64(i), payload, expires)
-		c.Get(uint64(i))
+	for i := CacheKey(0); i < CacheKey(b.N); i++ {
+		c.Set(i, payload, expires)
+		c.Get(i)
 	}
 }

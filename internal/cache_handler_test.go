@@ -116,18 +116,18 @@ func TestCacheHandler_varying(t *testing.T) {
 // Mocks
 
 type testCache struct {
-	items map[uint64][]byte
+	items map[CacheKey][]byte
 }
 
 func newTestCache() *testCache {
-	return &testCache{items: make(map[uint64][]byte)}
+	return &testCache{items: make(map[CacheKey][]byte)}
 }
 
-func (t *testCache) Get(key uint64) ([]byte, bool) {
+func (t *testCache) Get(key CacheKey) ([]byte, bool) {
 	item, found := t.items[key]
 	return item, found
 }
 
-func (t *testCache) Set(key uint64, value []byte, expiresAt time.Time) {
+func (t *testCache) Set(key CacheKey, value []byte, expiresAt time.Time) {
 	t.items[key] = value
 }
