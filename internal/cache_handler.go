@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"hash/fnv"
 	"log/slog"
 	"net/http"
 	"time"
@@ -28,18 +27,37 @@ func NewCacheHandler(cache Cache, maxBodySize int, next http.Handler) *CacheHand
 	}
 }
 
-func (h *CacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	key := h.deriveCacheKey(r)
+func (h *CacheHandler) fetchFromCache(r *http.Request, variant *Variant) (CacheableResponse, CacheKey, bool) {
+	key := variant.CacheKey()
 	cached, found := h.cache.Get(key)
 
 	if found {
 		response, err := CacheableResponseFromBuffer(cached)
 		if err != nil {
 			slog.Error("Failed to decode cached response", "path", r.URL.Path, "error", err)
-		} else {
-			response.WriteCachedResponse(w)
-			return
+			return CacheableResponse{}, key, false
 		}
+
+		return response, key, true
+	}
+
+	return CacheableResponse{}, key, false
+}
+
+func (h *CacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	variant := NewVariant(r)
+	response, key, found := h.fetchFromCache(r, variant)
+
+	if found {
+		variant.SetResponseHeader(response.HttpHeader)
+		if !variant.Matches(response.VariantHeader) {
+			response, key, found = h.fetchFromCache(r, variant)
+		}
+	}
+
+	if found {
+		response.WriteCachedResponse(w)
+		return
 	}
 
 	if !h.shouldCacheRequest(r) {
@@ -52,6 +70,9 @@ func (h *CacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	cacheable, expires := cr.CacheStatus()
 	if cacheable {
+		variant.SetResponseHeader(cr.HttpHeader)
+		cr.VariantHeader = variant.VariantHeader()
+
 		encoded, err := cr.ToBuffer()
 		if err != nil {
 			slog.Error("Failed to encode response for caching", "path", r.URL.Path, "error", err)
@@ -60,14 +81,6 @@ func (h *CacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			slog.Info("Cached response", "path", r.URL.Path, "expires", expires)
 		}
 	}
-}
-
-func (h *CacheHandler) deriveCacheKey(r *http.Request) CacheKey {
-	hash := fnv.New64()
-	hash.Write([]byte(r.Method))
-	hash.Write([]byte(r.URL.Path))
-	hash.Write([]byte(r.URL.Query().Encode()))
-	return CacheKey(hash.Sum64())
 }
 
 func (h *CacheHandler) shouldCacheRequest(r *http.Request) bool {

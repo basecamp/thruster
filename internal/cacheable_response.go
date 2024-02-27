@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -18,9 +19,10 @@ var (
 )
 
 type CacheableResponse struct {
-	StatusCode int
-	HttpHeader http.Header
-	Body       []byte
+	StatusCode    int
+	HttpHeader    http.Header
+	Body          []byte
+	VariantHeader http.Header
 
 	responseWriter http.ResponseWriter
 	stasher        *stashingWriter
@@ -82,8 +84,7 @@ func (c *CacheableResponse) CacheStatus() (bool, time.Time) {
 		return false, time.Time{}
 	}
 
-	// TODO: support Vary header properly
-	if c.HttpHeader.Get("Vary") != "" {
+	if strings.Contains(c.HttpHeader.Get("Vary"), "*") {
 		return false, time.Time{}
 	}
 

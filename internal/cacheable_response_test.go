@@ -63,11 +63,11 @@ func TestCacheableResponse_cache_headers(t *testing.T) {
 	}
 }
 
-func TestCacheableResponse_does_not_cache_items_with_vary_header(t *testing.T) {
+func TestCacheableResponse_does_not_cache_items_with_wildcard_vary_header(t *testing.T) {
 	rec := httptest.NewRecorder()
 	cr := NewCacheableResponse(rec, 1024)
 	cr.Header().Set("Cache-Control", "public, max-age=60")
-	cr.Header().Set("Vary", "Accept-Encoding")
+	cr.Header().Set("Vary", "*")
 
 	cacheable, _ := cr.CacheStatus()
 	assert.False(t, cacheable)

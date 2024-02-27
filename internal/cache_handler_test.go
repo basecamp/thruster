@@ -66,7 +66,7 @@ func TestCacheHandler_caching(t *testing.T) {
 	}
 }
 
-func TestCacheHandler_varying(t *testing.T) {
+func TestCacheHandler_keying(t *testing.T) {
 	tests := map[string]struct {
 		paths               []string
 		methods             []string
@@ -110,6 +110,61 @@ func TestCacheHandler_varying(t *testing.T) {
 
 			assert.Equal(t, tc.expectedCacheLength, len(cache.items))
 		})
+	}
+}
+
+func TestCacheHandler_vary_header(t *testing.T) {
+	cache := newTestCache()
+	handler := NewCacheHandler(cache, 1024, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		contentType := r.Header.Get("Accept")
+		w.Header().Set("Vary", "Accept")
+		w.Header().Set("Cache-Control", "public, max-age=600")
+		w.Header().Set("Content-Type", contentType)
+		w.Write([]byte(contentType))
+	}))
+
+	doReq := func(accept string, other string) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "http://example.com", nil)
+		r.Header.Set("Accept", accept)
+		r.Header.Set("Other", other)
+		handler.ServeHTTP(w, r)
+		return w
+	}
+
+	resp := doReq("application/json", "a")
+	assert.Equal(t, "application/json", resp.Body.String())
+	assert.Equal(t, "miss", resp.Header().Get("X-Cache"))
+
+	resp = doReq("application/json", "b")
+	assert.Equal(t, "application/json", resp.Body.String())
+	assert.Equal(t, "hit", resp.Header().Get("X-Cache"))
+
+	resp = doReq("text/plain", "a")
+	assert.Equal(t, "text/plain", resp.Body.String())
+	assert.Equal(t, "miss", resp.Header().Get("X-Cache"))
+
+	resp = doReq("text/plain", "a")
+	assert.Equal(t, "text/plain", resp.Body.String())
+	assert.Equal(t, "hit", resp.Header().Get("X-Cache"))
+
+	resp = doReq("application/json", "b")
+	assert.Equal(t, "application/json", resp.Body.String())
+	assert.Equal(t, "hit", resp.Header().Get("X-Cache"))
+}
+
+func BenchmarkCacheHandler_retrieving(b *testing.B) {
+	cache := NewMemoryCache(1*MB, 1*MB)
+
+	handler := NewCacheHandler(cache, 1024, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=600")
+		w.Write([]byte("Hello"))
+	}))
+
+	for i := 0; i < b.N; i++ {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/", nil)
+		handler.ServeHTTP(w, r)
 	}
 }
 
