@@ -3,6 +3,7 @@ package internal
 import (
 	"os"
 	"path"
+	"testing"
 )
 
 func fixturePath(name string) string {
@@ -17,4 +18,26 @@ func fixtureContent(name string) []byte {
 func fixtureLength(name string) int64 {
 	info, _ := os.Stat(fixturePath(name))
 	return info.Size()
+}
+
+func usingEnvVar(t *testing.T, key, value string) {
+	old, found := os.LookupEnv(key)
+	os.Setenv(key, value)
+
+	t.Cleanup(func() {
+		if found {
+			os.Setenv(key, old)
+		} else {
+			os.Unsetenv(key)
+		}
+	})
+}
+
+func usingProgramArgs(t *testing.T, args ...string) {
+	old := os.Args
+	os.Args = args
+
+	t.Cleanup(func() {
+		os.Args = old
+	})
 }
