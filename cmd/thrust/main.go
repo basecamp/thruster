@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 
@@ -20,7 +21,8 @@ func main() {
 
 	config, err := internal.NewConfig()
 	if err != nil {
-		panic(err)
+		fmt.Printf("ERROR: %s\n", err)
+		os.Exit(1)
 	}
 
 	service := internal.NewService(config)
