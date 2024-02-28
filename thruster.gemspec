@@ -1,6 +1,8 @@
+require_relative "lib/thruster/version"
+
 Gem::Specification.new do |s|
   s.name        = "thruster"
-  s.version     = "0.0.1"
+  s.version     = Thruster::VERSION
   s.summary     = "Zero-config HTTP/2 proxy"
   s.description = "A zero-config HTTP/2 proxy for lightweight production deployments"
   s.authors     = [ "Kevin McConnell" ]

@@ -19,7 +19,7 @@ namespace :build do
     system("make dist")
   end
 end
-task :package => "build:native"
+task :gem => "build:native"
 
 NATIVE_PLATFORMS.each do |platform, executable|
   BASE_GEMSPEC.dup.tap do |gemspec|
