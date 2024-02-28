@@ -15,30 +15,35 @@ func TestCacheHandler_caching(t *testing.T) {
 		req                 *http.Request
 		cacheControl        string
 		expectedResponses   []string
+		expectedHits        []string
 		expectedCacheLength int
 	}{
 		"cacheable": {
 			httptest.NewRequest("GET", "http://example.com", nil),
 			"public, max-age=60",
 			[]string{"Hello 1", "Hello 1", "Hello 1"},
+			[]string{"miss", "hit", "hit"},
 			1,
 		},
 		"cacheable with s-max-age": {
 			httptest.NewRequest("GET", "http://example.com", nil),
 			"public, s-max-age=60",
 			[]string{"Hello 1", "Hello 1", "Hello 1"},
+			[]string{"miss", "hit", "hit"},
 			1,
 		},
 		"uncacheable response": {
 			httptest.NewRequest("GET", "http://example.com", nil),
 			"private",
 			[]string{"Hello 1", "Hello 2", "Hello 3"},
+			[]string{"miss", "miss", "miss"},
 			0,
 		},
 		"uncacheable request": {
 			httptest.NewRequest("POST", "http://example.com", nil),
 			"public, max-age=60",
 			[]string{"Hello 1", "Hello 2", "Hello 3"},
+			[]string{"bypass", "bypass", "bypass"},
 			0,
 		},
 	}
@@ -47,6 +52,7 @@ func TestCacheHandler_caching(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			cache := newTestCache()
 			counter := 0
+			hits := []string{}
 
 			handler := NewCacheHandler(cache, 1024, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				counter++
@@ -57,10 +63,12 @@ func TestCacheHandler_caching(t *testing.T) {
 			for _, expectedResponse := range tc.expectedResponses {
 				w := httptest.NewRecorder()
 				handler.ServeHTTP(w, tc.req)
+				hits = append(hits, w.Result().Header.Get("X-Cache"))
 
 				assert.Equal(t, expectedResponse, w.Body.String())
 			}
 
+			assert.Equal(t, tc.expectedHits, hits)
 			assert.Equal(t, tc.expectedCacheLength, len(cache.items))
 		})
 	}
@@ -68,47 +76,51 @@ func TestCacheHandler_caching(t *testing.T) {
 
 func TestCacheHandler_keying(t *testing.T) {
 	tests := map[string]struct {
-		paths               []string
-		methods             []string
-		expectedCacheLength int
+		paths        []string
+		methods      []string
+		expectedHits []string
 	}{
 		"path": {
 			[]string{"http://example.com/one", "http://example.com/two", "http://example.com/three", "http://example.com/three"},
 			[]string{http.MethodGet, http.MethodGet, http.MethodGet, http.MethodGet},
-			3,
+			[]string{"miss", "miss", "miss", "hit"},
 		},
 		"query string": {
 			[]string{"http://example.com?name=kevin", "http://example.com?name=kevin", "http://example.com?name=bob"},
 			[]string{http.MethodGet, http.MethodGet, http.MethodGet},
-			2,
+			[]string{"miss", "hit", "miss"},
 		},
 		"query string ordering": {
 			[]string{"http://example.com?a=1&b=2", "http://example.com?a=1&b=2", "http://example.com?b=2&a=1"},
 			[]string{http.MethodGet, http.MethodGet, http.MethodGet},
-			1,
+			[]string{"miss", "hit", "hit"},
 		},
 		"method": {
 			[]string{"http://example.com/one", "http://example.com/one", "http://example.com/one"},
 			[]string{http.MethodGet, http.MethodHead, http.MethodPost},
-			2,
+			[]string{"miss", "miss", "bypass"},
 		},
 	}
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			cache := newTestCache()
-
 			handler := NewCacheHandler(cache, 1024, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Cache-Control", "public, max-age=60")
+				w.Write([]byte("Hello"))
 			}))
+
+			hits := []string{}
 
 			for i, url := range tc.paths {
 				w := httptest.NewRecorder()
 				r := httptest.NewRequest(tc.methods[i], url, nil)
 				handler.ServeHTTP(w, r)
+
+				hits = append(hits, w.Result().Header.Get("X-Cache"))
 			}
 
-			assert.Equal(t, tc.expectedCacheLength, len(cache.items))
+			assert.Equal(t, tc.expectedHits, hits)
 		})
 	}
 }

@@ -61,6 +61,7 @@ func (h *CacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !h.shouldCacheRequest(r) {
+		w.Header().Set("X-Cache", "bypass")
 		h.next.ServeHTTP(w, r)
 		return
 	}
