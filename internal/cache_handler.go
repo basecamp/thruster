@@ -27,23 +27,6 @@ func NewCacheHandler(cache Cache, maxBodySize int, next http.Handler) *CacheHand
 	}
 }
 
-func (h *CacheHandler) fetchFromCache(r *http.Request, variant *Variant) (CacheableResponse, CacheKey, bool) {
-	key := variant.CacheKey()
-	cached, found := h.cache.Get(key)
-
-	if found {
-		response, err := CacheableResponseFromBuffer(cached)
-		if err != nil {
-			slog.Error("Failed to decode cached response", "path", r.URL.Path, "error", err)
-			return CacheableResponse{}, key, false
-		}
-
-		return response, key, true
-	}
-
-	return CacheableResponse{}, key, false
-}
-
 func (h *CacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	variant := NewVariant(r)
 	response, key, found := h.fetchFromCache(r, variant)
@@ -61,6 +44,7 @@ func (h *CacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !h.shouldCacheRequest(r) {
+		slog.Debug("Bypassing cache for request", "path", r.URL.Path, "method", r.Method)
 		w.Header().Set("X-Cache", "bypass")
 		h.next.ServeHTTP(w, r)
 		return
@@ -79,9 +63,28 @@ func (h *CacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			slog.Error("Failed to encode response for caching", "path", r.URL.Path, "error", err)
 		} else {
 			h.cache.Set(key, encoded, expires)
-			slog.Info("Cached response", "path", r.URL.Path, "expires", expires)
+			slog.Debug("Cached response", "path", r.URL.Path, "expires", expires, "size", len(encoded))
 		}
 	}
+}
+
+// Private
+
+func (h *CacheHandler) fetchFromCache(r *http.Request, variant *Variant) (CacheableResponse, CacheKey, bool) {
+	key := variant.CacheKey()
+	cached, found := h.cache.Get(key)
+
+	if found {
+		response, err := CacheableResponseFromBuffer(cached)
+		if err != nil {
+			slog.Error("Failed to decode cached response", "path", r.URL.Path, "error", err)
+			return CacheableResponse{}, key, false
+		}
+
+		return response, key, true
+	}
+
+	return CacheableResponse{}, key, false
 }
 
 func (h *CacheHandler) shouldCacheRequest(r *http.Request) bool {
