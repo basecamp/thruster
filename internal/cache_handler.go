@@ -63,7 +63,7 @@ func (h *CacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			slog.Error("Failed to encode response for caching", "path", r.URL.Path, "error", err)
 		} else {
 			h.cache.Set(key, encoded, expires)
-			slog.Debug("Cached response", "path", r.URL.Path, "expires", expires, "size", len(encoded))
+			slog.Debug("Added response to cache", "path", r.URL.Path, "key", key, "expires", expires, "size", len(encoded))
 		}
 	}
 }

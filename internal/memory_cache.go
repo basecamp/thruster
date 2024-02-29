@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"log/slog"
 	"math/rand"
 	"sync"
 	"time"
@@ -42,13 +43,15 @@ func (c *MemoryCache) Set(key CacheKey, value []byte, expiresAt time.Time) {
 	c.Lock()
 	defer c.Unlock()
 
-	if len(value) > c.maxItemSize || len(value) > c.capacity {
-		return // Item is too large to store.
+	itemSize := len(value)
+	if itemSize > c.maxItemSize || itemSize > c.capacity {
+		slog.Debug("Cache: item is too large to store", "len", itemSize)
+		return
 	}
 
-	limit := c.capacity - len(value)
-
+	limit := c.capacity - itemSize
 	for c.size > limit {
+		slog.Debug("Cache: evicting item to make space", "current_size", c.size, "need_size", limit)
 		c.evictOldestItem()
 	}
 
@@ -59,7 +62,9 @@ func (c *MemoryCache) Set(key CacheKey, value []byte, expiresAt time.Time) {
 	}
 
 	c.keys = append(c.keys, key)
-	c.size += len(value)
+	c.size += itemSize
+
+	slog.Debug("Cache: added item", "key", key, "size", itemSize, "expires_at", expiresAt)
 }
 
 func (c *MemoryCache) Get(key CacheKey) ([]byte, bool) {

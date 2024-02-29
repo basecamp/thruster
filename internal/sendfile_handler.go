@@ -62,7 +62,7 @@ func (w *sendfileWriter) WriteHeader(statusCode int) {
 	w.w.Header().Del("X-Sendfile")
 
 	if w.sendingFile {
-		slog.Info("X-Sendfile sending file", "path", fname)
+		slog.Debug("X-Sendfile sending file", "path", fname)
 		http.ServeFile(w.w, w.r, fname)
 	} else {
 		w.w.WriteHeader(statusCode)
