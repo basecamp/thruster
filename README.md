@@ -49,7 +49,13 @@ $ SSL_DOMAIN=myapp.example.com thrust bin/rails server
 ## Custom configuration
 
 Thruster provides a number of environment variables that can be used to
-customize its behavior:
+customize its behavior.
+
+To prevent naming clashes with your application's own environment variables,
+Thruster's environment variables can optionally be prefixed with `THRUSTER_`.
+For example, `SSL_DOMAIN` can also be set as `THRUSTER_SSL_DOMAIN`. Whenever a
+prefixed variable is set, Thruster will use it in preference to the unprefixed
+version.
 
 | Variable Name         | Description                                                                     | Default Value |
 |-----------------------|---------------------------------------------------------------------------------|---------------|

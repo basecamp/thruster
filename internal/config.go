@@ -12,6 +12,8 @@ const (
 	KB = 1024
 	MB = 1024 * KB
 
+	ENV_PREFIX = "THRUSTER_"
+
 	defaultTargetPort = 3000
 
 	defaultCacheSize             = 64 * MB
@@ -73,7 +75,7 @@ func NewConfig() (*Config, error) {
 		XSendfileEnabled:      getEnvBool("X_SENDFILE_ENABLED", true),
 		MaxRequestBody:        getEnvInt("MAX_REQUEST_BODY", defaultMaxRequestBody),
 
-		SSLDomain:      os.Getenv("SSL_DOMAIN"),
+		SSLDomain:      getEnvString("SSL_DOMAIN", ""),
 		StoragePath:    getEnvString("STORAGE_PATH", defaultStoragePath),
 		BadGatewayPage: getEnvString("BAD_GATEWAY_PAGE", defaultBadGatewayPage),
 
@@ -87,18 +89,32 @@ func NewConfig() (*Config, error) {
 	}, nil
 }
 
-func getEnvString(key, defaultValue string) string {
-	value := os.Getenv(key)
-	if value == "" {
-		return defaultValue
+func findEnv(key string) (string, bool) {
+	value, ok := os.LookupEnv(ENV_PREFIX + key)
+	if ok {
+		return value, true
 	}
 
-	return value
+	value, ok = os.LookupEnv(key)
+	if ok {
+		return value, true
+	}
+
+	return "", false
+}
+
+func getEnvString(key, defaultValue string) string {
+	value, ok := findEnv(key)
+	if ok {
+		return value
+	}
+
+	return defaultValue
 }
 
 func getEnvInt(key string, defaultValue int) int {
-	value := os.Getenv(key)
-	if value == "" {
+	value, ok := findEnv(key)
+	if !ok {
 		return defaultValue
 	}
 
@@ -111,8 +127,8 @@ func getEnvInt(key string, defaultValue int) int {
 }
 
 func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
-	value := os.Getenv(key)
-	if value == "" {
+	value, ok := findEnv(key)
+	if !ok {
 		return defaultValue
 	}
 
@@ -125,8 +141,8 @@ func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
 }
 
 func getEnvBool(key string, defaultValue bool) bool {
-	value := os.Getenv(key)
-	if value == "" {
+	value, ok := findEnv(key)
+	if !ok {
 		return defaultValue
 	}
 
