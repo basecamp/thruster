@@ -51,41 +51,18 @@ $ SSL_DOMAIN=myapp.example.com thrust bin/rails server
 Thruster provides a number of environment variables that can be used to
 customize its behavior:
 
-- `SSL_DOMAIN` - The domain name to use for SSL provisioning. If not set, SSL
-  will be disabled.
-
-- `TARGET_PORT` - The port that your Puma server should run on. Defaults to
-  3000. Thruster will set `PORT` to this when starting your server.
-
-- `CACHE_SIZE` - The size of the HTTP cache in bytes. Defaults to 64MB.
-
-- `MAX_CACHE_ITEM_SIZE` - The maximum size of a single item in the HTTP cache
-  in bytes. Defaults to 1MB.
-
-- `X_SENDFILE_ENABLED` - Whether to enable X-Sendfile support. Defaults to
-  enabled; set to `0` or `false` to disable.
-
-- `MAX_REQUEST_BODY` - The maximum size of a request body in bytes. Requests
-  larger than this size will be refused; `0` means no maximum size. Defaults to
-  `0`.
-
-- `STORAGE_PATH` - The path to store Thruster's internal state. Defaults to
-  `./storage/thruster`.
-
-- `BAD_GATEWAY_PAGE` - Path to an HTML file to serve when the backend server
-  returns a 502 Bad Gateway error. Defaults to `./public/502.html`. If there is
-  no file at the specific path, Thruster will serve an empty 502 response
-  instead.
-
-- `HTTP_PORT` - The port to listen on for HTTP traffic. Defaults to 80.
-
-- `HTTPS_PORT` - The port to listen on for HTTPS traffic. Defaults to 443.
-
-- `HTTP_IDLE_TIMEOUT` - The maximum time in seconds that a client can be idle
-  before the connection is closed. Defaults to 60.
-
-- `HTTP_READ_TIMEOUT` - The maximum time in seconds that a client can take to
-  send the request headers. Defaults to 30.
-
-- `HTTP_WRITE_TIMEOUT` - The maximum time in seconds during which the client
-must read the response. Defaults to 30.
+| Variable Name         | Description                                                                     | Default Value |
+|-----------------------|---------------------------------------------------------------------------------|---------------|
+| `SSL_DOMAIN`          | The domain name to use for SSL provisioning. If not set, SSL will be disabled.  | None |
+| `TARGET_PORT`         | The port that your Puma server should run on. Thruster will set `PORT` to this when starting your server. | 3000 |
+| `CACHE_SIZE`          | The size of the HTTP cache in bytes.                                            | 64MB |
+| `MAX_CACHE_ITEM_SIZE` | The maximum size of a single item in the HTTP cache in bytes.                   | 1MB |
+| `X_SENDFILE_ENABLED`  | Whether to enable X-Sendfile support. Set to `0` or `false` to disable.         | Enabled |
+| `MAX_REQUEST_BODY`    | The maximum size of a request body in bytes. Requests larger than this size will be refused; `0` means no maximum size. | `0` |
+| `STORAGE_PATH`        | The path to store Thruster's internal state.                                    | `./storage/thruster` |
+| `BAD_GATEWAY_PAGE`    | Path to an HTML file to serve when the backend server returns a 502 Bad Gateway error. If there is no file at the specific path, Thruster will serve an empty 502 response instead. | `./public/502.html` |
+| `HTTP_PORT`           | The port to listen on for HTTP traffic.                                         | 80 |
+| `HTTPS_PORT`          | The port to listen on for HTTPS traffic.                                        | 443 |
+| `HTTP_IDLE_TIMEOUT`   | The maximum time in seconds that a client can be idle before the connection is closed. | 60 |
+| `HTTP_READ_TIMEOUT`   | The maximum time in seconds that a client can take to send the request headers. | 30 |
+| `HTTP_WRITE_TIMEOUT`  | The maximum time in seconds during which the client must read the response.     | 30 |
