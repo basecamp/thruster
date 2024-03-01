@@ -66,3 +66,4 @@ customize its behavior:
 | `HTTP_IDLE_TIMEOUT`   | The maximum time in seconds that a client can be idle before the connection is closed. | 60 |
 | `HTTP_READ_TIMEOUT`   | The maximum time in seconds that a client can take to send the request headers. | 30 |
 | `HTTP_WRITE_TIMEOUT`  | The maximum time in seconds during which the client must read the response.     | 30 |
+| `DEBUG`               | Set to `1` or `true` to enable debug logging.                                   | Disabled |

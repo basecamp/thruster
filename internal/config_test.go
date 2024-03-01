@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"log/slog"
 	"testing"
 	"time"
 
@@ -17,6 +18,7 @@ func TestConfig_defaults(t *testing.T) {
 	assert.Equal(t, 3000, c.TargetPort)
 	assert.Equal(t, "echo", c.UpstreamCommand)
 	assert.Equal(t, defaultCacheSize, c.CacheSizeBytes)
+	assert.Equal(t, slog.LevelInfo, c.LogLevel)
 }
 
 func TestConfig_override_defaults_with_env_vars(t *testing.T) {
@@ -25,6 +27,7 @@ func TestConfig_override_defaults_with_env_vars(t *testing.T) {
 	usingEnvVar(t, "CACHE_SIZE", "256")
 	usingEnvVar(t, "HTTP_READ_TIMEOUT", "5")
 	usingEnvVar(t, "X_SENDFILE_ENABLED", "0")
+	usingEnvVar(t, "DEBUG", "1")
 
 	c, err := NewConfig()
 	require.NoError(t, err)
@@ -33,6 +36,7 @@ func TestConfig_override_defaults_with_env_vars(t *testing.T) {
 	assert.Equal(t, 256, c.CacheSizeBytes)
 	assert.Equal(t, 5*time.Second, c.HttpReadTimeout)
 	assert.Equal(t, false, c.XSendfileEnabled)
+	assert.Equal(t, slog.LevelDebug, c.LogLevel)
 }
 
 func TestConfig_return_error_when_no_upstream_command(t *testing.T) {

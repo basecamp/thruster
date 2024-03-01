@@ -2,6 +2,7 @@ package internal
 
 import (
 	"errors"
+	"log/slog"
 	"os"
 	"strconv"
 	"time"
@@ -25,6 +26,8 @@ const (
 	defaultHttpIdleTimeout  = 60 * time.Second
 	defaultHttpReadTimeout  = 30 * time.Second
 	defaultHttpWriteTimeout = 30 * time.Second
+
+	defaultLogLevel = slog.LevelInfo
 )
 
 type Config struct {
@@ -46,11 +49,18 @@ type Config struct {
 	HttpIdleTimeout  time.Duration
 	HttpReadTimeout  time.Duration
 	HttpWriteTimeout time.Duration
+
+	LogLevel slog.Level
 }
 
 func NewConfig() (*Config, error) {
 	if len(os.Args) < 2 {
 		return nil, errors.New("missing upstream command")
+	}
+
+	logLevel := defaultLogLevel
+	if getEnvBool("DEBUG", false) {
+		logLevel = slog.LevelDebug
 	}
 
 	return &Config{
@@ -72,6 +82,8 @@ func NewConfig() (*Config, error) {
 		HttpIdleTimeout:  getEnvDuration("HTTP_IDLE_TIMEOUT", defaultHttpIdleTimeout),
 		HttpReadTimeout:  getEnvDuration("HTTP_READ_TIMEOUT", defaultHttpReadTimeout),
 		HttpWriteTimeout: getEnvDuration("HTTP_WRITE_TIMEOUT", defaultHttpWriteTimeout),
+
+		LogLevel: logLevel,
 	}, nil
 }
 
