@@ -20,8 +20,9 @@ const (
 	defaultMaxCacheItemSizeBytes = 1 * MB
 	defaultMaxRequestBody        = 0
 
-	defaultStoragePath    = "./storage/thruster"
-	defaultBadGatewayPage = "./public/502.html"
+	defaultStoragePath            = "./storage/thruster"
+	defaultBadGatewayPage         = "./public/502.html"
+	defaultImageProxyMaxDimension = 5000
 
 	defaultHttpPort         = 80
 	defaultHttpsPort        = 443
@@ -37,10 +38,12 @@ type Config struct {
 	UpstreamCommand string
 	UpstreamArgs    []string
 
-	CacheSizeBytes        int
-	MaxCacheItemSizeBytes int
-	XSendfileEnabled      bool
-	MaxRequestBody        int
+	CacheSizeBytes         int
+	MaxCacheItemSizeBytes  int
+	XSendfileEnabled       bool
+	ImageProxyEnabled      bool
+	ImageProxyMaxDimension int
+	MaxRequestBody         int
 
 	SSLDomain      string
 	StoragePath    string
@@ -70,10 +73,12 @@ func NewConfig() (*Config, error) {
 		UpstreamCommand: os.Args[1],
 		UpstreamArgs:    os.Args[2:],
 
-		CacheSizeBytes:        getEnvInt("CACHE_SIZE", defaultCacheSize),
-		MaxCacheItemSizeBytes: getEnvInt("MAX_CACHE_ITEM_SIZE", defaultMaxCacheItemSizeBytes),
-		XSendfileEnabled:      getEnvBool("X_SENDFILE_ENABLED", true),
-		MaxRequestBody:        getEnvInt("MAX_REQUEST_BODY", defaultMaxRequestBody),
+		CacheSizeBytes:         getEnvInt("CACHE_SIZE", defaultCacheSize),
+		MaxCacheItemSizeBytes:  getEnvInt("MAX_CACHE_ITEM_SIZE", defaultMaxCacheItemSizeBytes),
+		XSendfileEnabled:       getEnvBool("X_SENDFILE_ENABLED", true),
+		ImageProxyEnabled:      getEnvBool("IMAGE_PROXY_ENABLED", true),
+		ImageProxyMaxDimension: getEnvInt("IMAGE_PROXY_MAX_DIMENSION", defaultImageProxyMaxDimension),
+		MaxRequestBody:         getEnvInt("MAX_REQUEST_BODY", defaultMaxRequestBody),
 
 		SSLDomain:      getEnvString("SSL_DOMAIN", ""),
 		StoragePath:    getEnvString("STORAGE_PATH", defaultStoragePath),

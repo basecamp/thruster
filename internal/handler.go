@@ -15,9 +15,12 @@ type HandlerOptions struct {
 	maxRequestBody           int
 	targetUrl                *url.URL
 	xSendfileEnabled         bool
+	imageProxyEnabled        bool
 }
 
 func NewHandler(options HandlerOptions) http.Handler {
+	mux := http.NewServeMux()
+
 	handler := NewProxyHandler(options.targetUrl, options.badGatewayPage)
 	handler = NewCacheHandler(options.cache, options.maxCacheableResponseBody, handler)
 	handler = NewSendfileHandler(options.xSendfileEnabled, handler)
@@ -25,5 +28,11 @@ func NewHandler(options HandlerOptions) http.Handler {
 	handler = NewMaxRequestBodyHandler(options.maxRequestBody, handler)
 	handler = NewLoggingMiddleware(slog.Default(), handler)
 
-	return handler
+	if options.imageProxyEnabled {
+		RegisterNewImageProxyHandler(mux)
+	}
+
+	mux.Handle("/", handler)
+
+	return mux
 }
