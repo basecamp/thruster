@@ -10,6 +10,16 @@ func fixturePath(name string) string {
 	return path.Join("fixtures", name)
 }
 
+func fixtureExists(name string) bool {
+	f, err := os.Open(fixturePath(name))
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+
+	return true
+}
+
 func fixtureContent(name string) []byte {
 	result, _ := os.ReadFile(fixturePath(name))
 	return result

@@ -23,6 +23,7 @@ func (s *Service) Run() int {
 		xSendfileEnabled:         s.config.XSendfileEnabled,
 		maxCacheableResponseBody: s.config.MaxCacheItemSizeBytes,
 		badGatewayPage:           s.config.BadGatewayPage,
+		imageProxyEnabled:        s.config.ImageProxyEnabled,
 	}
 
 	handler := NewHandler(handlerOptions)
@@ -56,4 +57,9 @@ func (s *Service) targetUrl() *url.URL {
 func (s *Service) setEnvironment() {
 	// Set PORT to be inherited by the upstream process.
 	os.Setenv("PORT", fmt.Sprintf("%d", s.config.TargetPort))
+
+	// Set IMAGE_PROXY_PATH, if enabled
+	if s.config.ImageProxyEnabled {
+		os.Setenv("IMAGE_PROXY_PATH", imageProxyHandlerPath)
+	}
 }
