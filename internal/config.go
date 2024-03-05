@@ -6,6 +6,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"golang.org/x/crypto/acme"
 )
 
 const (
@@ -20,8 +22,9 @@ const (
 	defaultMaxCacheItemSizeBytes = 1 * MB
 	defaultMaxRequestBody        = 0
 
-	defaultStoragePath    = "./storage/thruster"
-	defaultBadGatewayPage = "./public/502.html"
+	defaultACMEDirectoryURL = acme.LetsEncryptURL
+	defaultStoragePath      = "./storage/thruster"
+	defaultBadGatewayPage   = "./public/502.html"
 
 	defaultHttpPort         = 80
 	defaultHttpsPort        = 443
@@ -42,9 +45,12 @@ type Config struct {
 	XSendfileEnabled      bool
 	MaxRequestBody        int
 
-	SSLDomain      string
-	StoragePath    string
-	BadGatewayPage string
+	SSLDomain        string
+	ACMEDirectoryURL string
+	EAB_KID          string
+	EAB_HMACKey      string
+	StoragePath      string
+	BadGatewayPage   string
 
 	HttpPort         int
 	HttpsPort        int
@@ -75,9 +81,12 @@ func NewConfig() (*Config, error) {
 		XSendfileEnabled:      getEnvBool("X_SENDFILE_ENABLED", true),
 		MaxRequestBody:        getEnvInt("MAX_REQUEST_BODY", defaultMaxRequestBody),
 
-		SSLDomain:      getEnvString("SSL_DOMAIN", ""),
-		StoragePath:    getEnvString("STORAGE_PATH", defaultStoragePath),
-		BadGatewayPage: getEnvString("BAD_GATEWAY_PAGE", defaultBadGatewayPage),
+		SSLDomain:        getEnvString("SSL_DOMAIN", ""),
+		ACMEDirectoryURL: getEnvString("ACME_DIRECTORY", defaultACMEDirectoryURL),
+		EAB_KID:          getEnvString("EAB_KID", ""),
+		EAB_HMACKey:      getEnvString("EAB_HMAC_KEY", ""),
+		StoragePath:      getEnvString("STORAGE_PATH", defaultStoragePath),
+		BadGatewayPage:   getEnvString("BAD_GATEWAY_PAGE", defaultBadGatewayPage),
 
 		HttpPort:         getEnvInt("HTTP_PORT", defaultHttpPort),
 		HttpsPort:        getEnvInt("HTTPS_PORT", defaultHttpsPort),
