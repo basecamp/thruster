@@ -18,7 +18,7 @@ You can also run individual tests using Go's test runner. For example:
 
 You can run the application using `go run`:
 
-    go run cmd/thruster/main.go
+    go run ./cmd/thrust
 
 You can also build for the current environment using the Makefile:
 
@@ -38,6 +38,8 @@ This will create a `dist/` directory with binaries for each platform.
 In order to ship the platform-specific binary inside a gem, we actually build
 multiple gems, one for each platform. The `rake release` task will build all the
 necessary gems.
+
+The comlete steps for releasing a new version are:
 
 - Update the version & changelog:
   - [ ] update `lib/thruster/version.rb`
