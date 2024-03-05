@@ -95,7 +95,7 @@ func TestHandlerMaxRequestBody(t *testing.T) {
 	w = httptest.NewRecorder()
 	r = httptest.NewRequest("POST", "/", bytes.NewReader([]byte("This one is too long")))
 	h.ServeHTTP(w, r)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Equal(t, http.StatusRequestEntityTooLarge, w.Code)
 
 	options.maxRequestBody = 0
 	h = NewHandler(options)
