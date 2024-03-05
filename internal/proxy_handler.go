@@ -19,7 +19,7 @@ func NewProxyHandler(targetUrl *url.URL, badGatewayPage string) http.Handler {
 func ProxyErrorHandler(badGatewayPage string) func(w http.ResponseWriter, r *http.Request, err error) {
 	content, err := os.ReadFile(badGatewayPage)
 	if err != nil {
-		slog.Info("No custom 502 page found", "path", badGatewayPage)
+		slog.Debug("No custom 502 page found", "path", badGatewayPage)
 		content = nil
 	}
 
