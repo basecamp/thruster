@@ -2,12 +2,14 @@ package internal
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
 	"time"
 
+	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
 )
 
@@ -68,10 +70,34 @@ func (s *Server) Stop() {
 }
 
 func (s *Server) certManager() *autocert.Manager {
+	client := &acme.Client{DirectoryURL: s.config.ACMEDirectoryURL}
+	binding := s.externalAccountBinding()
+
+	slog.Debug("SSL: initializing", "directory", client.DirectoryURL, "using_eab", binding != nil)
+
 	return &autocert.Manager{
-		Cache:      autocert.DirCache(s.config.StoragePath),
-		HostPolicy: autocert.HostWhitelist(s.config.SSLDomain),
-		Prompt:     autocert.AcceptTOS,
+		Cache:                  autocert.DirCache(s.config.StoragePath),
+		Client:                 client,
+		ExternalAccountBinding: binding,
+		HostPolicy:             autocert.HostWhitelist(s.config.SSLDomain),
+		Prompt:                 autocert.AcceptTOS,
+	}
+}
+
+func (s *Server) externalAccountBinding() *acme.ExternalAccountBinding {
+	if s.config.EAB_KID == "" || s.config.EAB_HMACKey == "" {
+		return nil
+	}
+
+	key, err := base64.RawURLEncoding.DecodeString(s.config.EAB_HMACKey)
+	if err != nil {
+		slog.Error("Error decoding EAB_HMACKey", "error", err)
+		return nil
+	}
+
+	return &acme.ExternalAccountBinding{
+		KID: s.config.EAB_KID,
+		Key: key,
 	}
 }
 
