@@ -1,3 +1,10 @@
+## v0.0.3 / 2024-03-06
+
+* Support additional ACME providers
+* Respond with `413`, not `400` when blocking oversized requests
+* Allow prefixing env vars with `THRUSTER_` to avoid naming clashes
+* Additional debug-level logging
+
 ## v0.0.2 / 2024-02-28
 
 * Support `Vary` header in HTTP caching
