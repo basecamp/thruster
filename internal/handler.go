@@ -22,7 +22,11 @@ func NewHandler(options HandlerOptions) http.Handler {
 	handler = NewCacheHandler(options.cache, options.maxCacheableResponseBody, handler)
 	handler = NewSendfileHandler(options.xSendfileEnabled, handler)
 	handler = gzhttp.GzipHandler(handler)
-	handler = NewMaxRequestBodyHandler(options.maxRequestBody, handler)
+
+	if options.maxRequestBody > 0 {
+		handler = http.MaxBytesHandler(handler, int64(options.maxRequestBody))
+	}
+
 	handler = NewLoggingMiddleware(slog.Default(), handler)
 
 	return handler
