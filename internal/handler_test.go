@@ -2,6 +2,9 @@ package internal
 
 import (
 	"bytes"
+	"context"
+	"crypto/tls"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -9,6 +12,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/net/http2"
 )
 
 func TestHandlerGzipCompression_when_proxying(t *testing.T) {
@@ -261,6 +266,32 @@ func TestHandlerXForwardedHeadersDropsExistingHeadersWhenForwardingNotEnabled(t 
 	r.Header.Set("X-Forwarded-Host", "other.example.com")
 	r.RemoteAddr = "1.2.3.4:1234"
 	h.ServeHTTP(w, r)
+}
+
+func TestHandlerH2C(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	defer upstream.Close()
+
+	options := handlerOptions(upstream.URL)
+	handler := NewHandler(options)
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	client := http.Client{
+		Transport: &http2.Transport{
+			AllowHTTP: true,
+			DialTLSContext: func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
+				var d net.Dialer
+				return d.DialContext(ctx, network, addr)
+			},
+		},
+	}
+
+	resp, err := client.Get(server.URL)
+
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "HTTP/2.0", resp.Proto)
 }
 
 // Helpers
