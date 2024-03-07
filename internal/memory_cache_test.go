@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"bytes"
 	"testing"
 	"time"
 
@@ -51,6 +52,31 @@ func TestMemoryCache_does_not_store_items_over_cache_limit(t *testing.T) {
 
 	_, ok := c.Get(1)
 	assert.False(t, ok)
+}
+
+func TestMemoryCache_of_size_zero_does_not_store_items(t *testing.T) {
+	c := NewMemoryCache(0, 1*KB)
+
+	c.Set(1, []byte("There's nowhere to store this"), time.Now().Add(1*time.Hour))
+
+	_, ok := c.Get(1)
+	assert.False(t, ok)
+}
+
+func TestMemoryCache_items_are_evicted_to_make_space(t *testing.T) {
+	maxCacheSize := 10 * KB
+	c := NewMemoryCache(maxCacheSize, 1*KB)
+
+	for i := CacheKey(0); i < 20; i++ {
+		payload := bytes.Repeat([]byte{byte(i)}, 1*KB)
+		c.Set(i, payload, time.Now().Add(1*time.Hour))
+
+		retrieved, ok := c.Get(i)
+		assert.True(t, ok)
+		assert.Equal(t, payload, retrieved)
+	}
+
+	assert.Equal(t, maxCacheSize, c.size)
 }
 
 func TestMemoryCache_does_not_store_items_over_item_limit(t *testing.T) {
