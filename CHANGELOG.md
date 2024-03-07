@@ -1,5 +1,10 @@
 ## v0.0.3 / 2024-03-06
 
+* Build with Go 1.22.1
+* Use stdlib `MaxBytesHandler` for request size limiting
+
+## v0.0.3 / 2024-03-06
+
 * Support additional ACME providers
 * Respond with `413`, not `400` when blocking oversized requests
 * Allow prefixing env vars with `THRUSTER_` to avoid naming clashes
