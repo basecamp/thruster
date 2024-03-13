@@ -1,4 +1,4 @@
-## v0.0.3 / 2024-03-06
+## v0.1.0 / 2024-03-07
 
 * Build with Go 1.22.1
 * Use stdlib `MaxBytesHandler` for request size limiting
