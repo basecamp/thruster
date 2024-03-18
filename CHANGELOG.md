@@ -1,3 +1,7 @@
+## v0.1.1 / 2024-03-18
+
+* Ensure `Content-Length` set correctly in `X-Sendfile` responses (#10)
+
 ## v0.1.0 / 2024-03-07
 
 * Build with Go 1.22.1
