@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"os"
+	"strconv"
 )
 
 type SendfileHandler struct {
@@ -55,15 +57,14 @@ func (w *sendfileWriter) Write(b []byte) (int, error) {
 }
 
 func (w *sendfileWriter) WriteHeader(statusCode int) {
-	fname := w.sendingFilename()
-	w.sendingFile = fname != ""
-	w.headerWritten = true
-
+	filename := w.sendingFilename()
 	w.w.Header().Del("X-Sendfile")
 
+	w.sendingFile = filename != ""
+	w.headerWritten = true
+
 	if w.sendingFile {
-		slog.Debug("X-Sendfile sending file", "path", fname)
-		http.ServeFile(w.w, w.r, fname)
+		w.serveFile(filename)
 	} else {
 		w.w.WriteHeader(statusCode)
 	}
@@ -80,4 +81,32 @@ func (w *sendfileWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 
 func (w *sendfileWriter) sendingFilename() string {
 	return w.w.Header().Get("X-Sendfile")
+}
+
+func (w *sendfileWriter) serveFile(filename string) {
+	slog.Debug("X-Sendfile sending file", "path", filename)
+
+	w.setContentLength(filename)
+	http.ServeFile(w.w, w.r, filename)
+}
+
+func (w *sendfileWriter) setContentLength(filename string) {
+	// In most cases, `http.ServeFile` will set this for us. However, it will not
+	// set it if the response also has a `Content-Encoding`.
+	// (https://github.com/golang/go/commit/fdc21f3eafe94490e55e0bf018490b3aa9ba2383)
+	//
+	// If we don't set (or at least clear) the header in that case, we'll pass
+	// through the `Content-Length` of the upstream's response, which can lead to
+	// us serving an incomplete response.
+	//
+	// In particular, this happens when Rails is serving a gzipped asset via
+	// `X-Sendfile`, which it does using `Content-Encoding: gzip` and
+	// `Content-Length: 0`.
+
+	fi, err := os.Stat(filename)
+	if err != nil {
+		w.w.Header().Del("Content-Length")
+	} else {
+		w.w.Header().Set("Content-Length", strconv.FormatInt(fi.Size(), 10))
+	}
 }
