@@ -29,6 +29,28 @@ func TestSendfileHandler(t *testing.T) {
 	assert.Equal(t, fixtureContent("image.jpg"), w.Body.Bytes())
 }
 
+func TestSendfileHandler_sends_correct_content_length_when_content_encoding_present(t *testing.T) {
+	upstream := func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "X-Sendfile", r.Header.Get("X-Sendfile-Type"))
+
+		w.Header().Set("Content-Encoding", "gzip")
+		w.Header().Set("Content-Length", "0")
+		w.Header().Set("X-Sendfile", fixturePath("image.jpg"))
+		w.WriteHeader(http.StatusOK)
+	}
+
+	h := NewSendfileHandler(true, http.HandlerFunc(upstream))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/", nil)
+	h.ServeHTTP(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "image/jpeg", w.Header().Get("Content-Type"))
+	assert.Equal(t, fixtureContent("image.jpg"), w.Body.Bytes())
+	assert.Equal(t, strconv.FormatInt(fixtureLength("image.jpg"), 10), w.Header().Get("Content-Length"))
+}
+
 func TestSendFileHandler_when_no_x_sendfile_present(t *testing.T) {
 	upstream := func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "X-Sendfile", r.Header.Get("X-Sendfile-Type"))
