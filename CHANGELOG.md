@@ -1,3 +1,7 @@
+## v0.1.2 / 2024-03-19
+
+* Don't cache `Range` requests
+
 ## v0.1.1 / 2024-03-18
 
 * Ensure `Content-Length` set correctly in `X-Sendfile` responses (#10)
