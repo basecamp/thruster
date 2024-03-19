@@ -90,6 +90,7 @@ func (h *CacheHandler) fetchFromCache(r *http.Request, variant *Variant) (Cachea
 func (h *CacheHandler) shouldCacheRequest(r *http.Request) bool {
 	allowedMethod := r.Method == http.MethodGet || r.Method == http.MethodHead
 	isUpgrade := r.Header.Get("Connection") == "Upgrade" || r.Header.Get("Upgrade") == "websocket"
+	isRange := r.Header.Get("Range") != ""
 
-	return allowedMethod && !isUpgrade
+	return allowedMethod && !isUpgrade && !isRange
 }
