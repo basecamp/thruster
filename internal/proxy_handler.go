@@ -12,6 +12,7 @@ import (
 func NewProxyHandler(targetUrl *url.URL, badGatewayPage string) http.Handler {
 	proxy := httputil.NewSingleHostReverseProxy(targetUrl)
 	proxy.ErrorHandler = ProxyErrorHandler(badGatewayPage)
+	proxy.Transport = createProxyTransport()
 
 	return proxy
 }
@@ -44,4 +45,29 @@ func ProxyErrorHandler(badGatewayPage string) func(w http.ResponseWriter, r *htt
 func isRequestEntityTooLarge(err error) bool {
 	var maxBytesError *http.MaxBytesError
 	return errors.As(err, &maxBytesError)
+}
+
+func createProxyTransport() *http.Transport {
+	// The default transport requests compressed responses even if the client
+	// didn't. If it receives a compressed response but the client wants
+	// uncompressed, the transport decompresses the response transparently.
+	//
+	// Although that seems helpful, it doesn't play well with X-Sendfile
+	// responses, as it may result in us being handed a reference to a file on
+	// disk that is already compressed, and we'd have to similarly decompress it
+	// before serving it to the client. This is wasteful, especially since there
+	// was probably an uncompressed version of it on disk already. It's also a bit
+	// fiddly to do on the fly without the ability to seek around in the
+	// uncompressed content.
+	//
+	// Compression between us and the upstream server is likely to be of limited
+	// use anyway, since we're only proxying from localhost. Given that fact --
+	// and the fact that most clients *will* request compressed responses anyway,
+	// which makes all of this moot -- our best option is to disable this
+	// on-the-fly compression.
+
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.DisableCompression = true
+
+	return transport
 }
