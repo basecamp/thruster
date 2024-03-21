@@ -1,3 +1,7 @@
+## v0.1.3 / 2024-03-21
+
+* Disable transparent proxy compression (#11)
+
 ## v0.1.2 / 2024-03-19
 
 * Don't cache `Range` requests
