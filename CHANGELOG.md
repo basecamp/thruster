@@ -1,3 +1,7 @@
+## Unreleased
+
+* Deprecate `SSL_DOMAIN` in favor of `TLS_DOMAIN`
+
 ## v0.1.3 / 2024-03-21
 
 * Disable transparent proxy compression (#11)

@@ -45,7 +45,7 @@ type Config struct {
 	XSendfileEnabled      bool
 	MaxRequestBody        int
 
-	SSLDomain        string
+	TLSDomain        string
 	ACMEDirectoryURL string
 	EAB_KID          string
 	EAB_HMACKey      string
@@ -61,6 +61,12 @@ type Config struct {
 	LogLevel slog.Level
 }
 
+var warn func(msg string, args ...any)
+
+func init() {
+	warn = slog.Warn
+}
+
 func NewConfig() (*Config, error) {
 	if len(os.Args) < 2 {
 		return nil, errors.New("missing upstream command")
@@ -70,6 +76,12 @@ func NewConfig() (*Config, error) {
 	if getEnvBool("DEBUG", false) {
 		logLevel = slog.LevelDebug
 	}
+
+	sslDomain := getEnvString("SSL_DOMAIN", "")
+	if sslDomain != "" {
+		warn("SSL_DOMAIN is deprecated. Use TLS_DOMAIN instead.", "SSL_DOMAIN", sslDomain)
+	}
+	tlsDomain := getEnvString("TLS_DOMAIN", sslDomain)
 
 	return &Config{
 		TargetPort:      getEnvInt("TARGET_PORT", defaultTargetPort),
@@ -81,7 +93,7 @@ func NewConfig() (*Config, error) {
 		XSendfileEnabled:      getEnvBool("X_SENDFILE_ENABLED", true),
 		MaxRequestBody:        getEnvInt("MAX_REQUEST_BODY", defaultMaxRequestBody),
 
-		SSLDomain:        getEnvString("SSL_DOMAIN", ""),
+		TLSDomain:        tlsDomain,
 		ACMEDirectoryURL: getEnvString("ACME_DIRECTORY", defaultACMEDirectoryURL),
 		EAB_KID:          getEnvString("EAB_KID", ""),
 		EAB_HMACKey:      getEnvString("EAB_HMAC_KEY", ""),
