@@ -13,6 +13,8 @@ func setLogger(level slog.Level) {
 }
 
 func main() {
+	setLogger(slog.LevelWarn)
+
 	config, err := internal.NewConfig()
 	if err != nil {
 		fmt.Printf("ERROR: %s\n", err)
