@@ -129,11 +129,52 @@ func TestCacheableResponse_write_cached_response(t *testing.T) {
 	cr.ToBuffer() // Ensure the body is saved
 
 	w := httptest.NewRecorder()
-	cr.WriteCachedResponse(w)
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	cr.WriteCachedResponse(w, r)
 
 	assert.Equal(t, http.StatusCreated, w.Code)
 	assert.Equal(t, "Hello World", w.Body.String())
 	assert.Equal(t, "public, max-age=60", w.Header().Get("Cache-Control"))
+	assert.Equal(t, "hit", w.Header().Get("X-Cache"))
+}
+
+func TestCacheableResponse_conditional_response(t *testing.T) {
+	rec := httptest.NewRecorder()
+	cr := NewCacheableResponse(rec, 1024)
+	cr.Header().Set("Etag", "deadbeef")
+	cr.WriteHeader(http.StatusOK)
+	cr.Write([]byte("Hello World"))
+
+	cr.ToBuffer() // Ensure the body is saved
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	r.Header.Set("If-None-Match", "deadbeef")
+	cr.WriteCachedResponse(w, r)
+
+	assert.Equal(t, http.StatusNotModified, w.Code)
+	assert.Equal(t, "", w.Body.String())
+	assert.Equal(t, "deadbeef", w.Header().Get("Etag"))
+	assert.Equal(t, "hit", w.Header().Get("X-Cache"))
+}
+
+func TestCacheableResponse_conditional_response_none_match(t *testing.T) {
+	rec := httptest.NewRecorder()
+	cr := NewCacheableResponse(rec, 1024)
+	cr.Header().Set("Etag", "ffffffff")
+	cr.WriteHeader(http.StatusOK)
+	cr.Write([]byte("Hello World"))
+
+	cr.ToBuffer() // Ensure the body is saved
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	r.Header.Set("If-None-Match", "deadbeef")
+	cr.WriteCachedResponse(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "Hello World", w.Body.String())
+	assert.Equal(t, "ffffffff", w.Header().Get("Etag"))
 	assert.Equal(t, "hit", w.Header().Get("X-Cache"))
 }
 
@@ -145,8 +186,9 @@ func TestCacheableResponse_scrubs_cookies_from_cacheable_responses(t *testing.T)
 	cr.WriteHeader(http.StatusOK)
 
 	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
 
-	cr.WriteCachedResponse(w)
+	cr.WriteCachedResponse(w, r)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Empty(t, w.Header().Get("Set-Cookie"))
@@ -159,8 +201,9 @@ func TestCacheableResponse_does_not_scrub_cookies_from_non_cacheable_responses(t
 	cr.WriteHeader(http.StatusOK)
 
 	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
 
-	cr.WriteCachedResponse(w)
+	cr.WriteCachedResponse(w, r)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "user=1234; Path=/; HttpOnly", w.Header().Get("Set-Cookie"))
