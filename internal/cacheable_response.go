@@ -110,7 +110,16 @@ func (c *CacheableResponse) CacheStatus() (bool, time.Time) {
 	return true, time.Now().Add(time.Duration(maxAge) * time.Second)
 }
 
-func (c *CacheableResponse) WriteCachedResponse(w http.ResponseWriter) {
+func (c *CacheableResponse) WriteCachedResponse(w http.ResponseWriter, r *http.Request) {
+	ifNoneMatch := r.Header.Get("If-None-Match")
+	if ifNoneMatch != "" {
+		etag := c.HttpHeader.Get("Etag")
+		if etag == ifNoneMatch {
+			c.StatusCode = http.StatusNotModified
+			c.copyHeaders(w, true)
+			return
+		}
+	}
 	c.copyHeaders(w, true)
 	io.Copy(w, bytes.NewReader(c.Body))
 }

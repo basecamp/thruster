@@ -39,7 +39,7 @@ func (h *CacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if found {
-		response.WriteCachedResponse(w)
+		response.WriteCachedResponse(w, r)
 		return
 	}
 
