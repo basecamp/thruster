@@ -139,9 +139,11 @@ func TestCacheableResponse_write_cached_response(t *testing.T) {
 }
 
 func TestCacheableResponse_conditional_response(t *testing.T) {
+	etag := `"deadbeef"`
+
 	rec := httptest.NewRecorder()
 	cr := NewCacheableResponse(rec, 1024)
-	cr.Header().Set("Etag", "deadbeef")
+	cr.Header().Set("Etag", etag)
 	cr.WriteHeader(http.StatusOK)
 	cr.Write([]byte("Hello World"))
 
@@ -149,12 +151,22 @@ func TestCacheableResponse_conditional_response(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
-	r.Header.Set("If-None-Match", "deadbeef")
+	r.Header.Set("If-None-Match", etag)
 	cr.WriteCachedResponse(w, r)
 
 	assert.Equal(t, http.StatusNotModified, w.Code)
 	assert.Equal(t, "", w.Body.String())
-	assert.Equal(t, "deadbeef", w.Header().Get("Etag"))
+	assert.Equal(t, etag, w.Header().Get("Etag"))
+	assert.Equal(t, "hit", w.Header().Get("X-Cache"))
+
+	w = httptest.NewRecorder()
+	r = httptest.NewRequest(http.MethodGet, "/", nil)
+	r.Header.Set("If-None-Match", "\"another\", \"deadbeef\"")
+	cr.WriteCachedResponse(w, r)
+
+	assert.Equal(t, http.StatusNotModified, w.Code)
+	assert.Equal(t, "", w.Body.String())
+	assert.Equal(t, etag, w.Header().Get("Etag"))
 	assert.Equal(t, "hit", w.Header().Get("X-Cache"))
 }
 
@@ -175,6 +187,44 @@ func TestCacheableResponse_conditional_response_none_match(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "Hello World", w.Body.String())
 	assert.Equal(t, "ffffffff", w.Header().Get("Etag"))
+	assert.Equal(t, "hit", w.Header().Get("X-Cache"))
+}
+
+func TestCacheableResponse_conditional_response_no_etag_in_request(t *testing.T) {
+	rec := httptest.NewRecorder()
+	cr := NewCacheableResponse(rec, 1024)
+	cr.Header().Set("Etag", "ffffffff")
+	cr.WriteHeader(http.StatusOK)
+	cr.Write([]byte("Hello World"))
+
+	cr.ToBuffer() // Ensure the body is saved
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	cr.WriteCachedResponse(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "Hello World", w.Body.String())
+	assert.Equal(t, "ffffffff", w.Header().Get("Etag"))
+	assert.Equal(t, "hit", w.Header().Get("X-Cache"))
+}
+
+func TestCacheableResponse_conditional_response_no_etag_in_response(t *testing.T) {
+	rec := httptest.NewRecorder()
+	cr := NewCacheableResponse(rec, 1024)
+	cr.WriteHeader(http.StatusOK)
+	cr.Write([]byte("Hello World"))
+
+	cr.ToBuffer() // Ensure the body is saved
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	r.Header.Set("If-None-Match", "deadbeef")
+	cr.WriteCachedResponse(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "Hello World", w.Body.String())
+	assert.Empty(t, w.Header().Get("Etag"))
 	assert.Equal(t, "hit", w.Header().Get("X-Cache"))
 }
 

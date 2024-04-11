@@ -71,7 +71,7 @@ func (c *CacheableResponse) Write(bytes []byte) (int, error) {
 func (c *CacheableResponse) WriteHeader(statusCode int) {
 	c.StatusCode = statusCode
 	c.scrubHeaders()
-	c.copyHeaders(c.responseWriter, false)
+	c.copyHeaders(c.responseWriter, false, c.StatusCode)
 	c.headersWritten = true
 }
 
@@ -111,22 +111,33 @@ func (c *CacheableResponse) CacheStatus() (bool, time.Time) {
 }
 
 func (c *CacheableResponse) WriteCachedResponse(w http.ResponseWriter, r *http.Request) {
-	ifNoneMatch := r.Header.Get("If-None-Match")
-	if ifNoneMatch != "" {
-		etag := c.HttpHeader.Get("Etag")
-		if etag == ifNoneMatch {
-			c.StatusCode = http.StatusNotModified
-			c.copyHeaders(w, true)
-			return
-		}
+	if c.wasNotModified(r) {
+		c.copyHeaders(w, true, http.StatusNotModified)
+	} else {
+		c.copyHeaders(w, true, c.StatusCode)
+		io.Copy(w, bytes.NewReader(c.Body))
 	}
-	c.copyHeaders(w, true)
-	io.Copy(w, bytes.NewReader(c.Body))
 }
 
 // Private
 
-func (c *CacheableResponse) copyHeaders(w http.ResponseWriter, wasHit bool) {
+func (c *CacheableResponse) wasNotModified(r *http.Request) bool {
+	requestEtag := c.HttpHeader.Get("Etag")
+	if requestEtag == "" {
+		return false
+	}
+
+	ifNoneMatch := strings.Split(r.Header.Get("If-None-Match"), ",")
+	for _, etag := range ifNoneMatch {
+		if strings.TrimSpace(etag) == requestEtag {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (c *CacheableResponse) copyHeaders(w http.ResponseWriter, wasHit bool, statusCode int) {
 	for k, v := range c.HttpHeader {
 		w.Header()[k] = v
 	}
@@ -137,7 +148,7 @@ func (c *CacheableResponse) copyHeaders(w http.ResponseWriter, wasHit bool) {
 		w.Header().Set("X-Cache", "miss")
 	}
 
-	w.WriteHeader(c.StatusCode)
+	w.WriteHeader(statusCode)
 }
 
 func (c *CacheableResponse) scrubHeaders() {
