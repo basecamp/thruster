@@ -22,6 +22,7 @@ func NewUpstreamProcess(name string, arg ...string) *UpstreamProcess {
 }
 
 func (p *UpstreamProcess) Run() (int, error) {
+	p.cmd.Stdin = os.Stdin
 	p.cmd.Stdout = os.Stdout
 	p.cmd.Stderr = os.Stderr
 
