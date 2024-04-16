@@ -1,6 +1,6 @@
 ## Unreleased
 
-* Deprecate `SSL_DOMAIN` in favor of `TLS_DOMAIN`
+* [BREAKING] Rename the `SSL_DOMAIN` env to `TLS_DOMAIN` (#13)
 
 ## v0.1.3 / 2024-03-21
 
