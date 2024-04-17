@@ -9,6 +9,27 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestConfig_tls(t *testing.T) {
+	t.Run("with no ENV", func(t *testing.T) {
+		usingProgramArgs(t, "thruster", "echo", "hello")
+
+		c, err := NewConfig()
+		require.NoError(t, err)
+
+		assert.Equal(t, "", c.TLSDomain)
+	})
+
+	t.Run("with TLS_DOMAIN", func(t *testing.T) {
+		usingProgramArgs(t, "thruster", "echo", "hello")
+		usingEnvVar(t, "TLS_DOMAIN", "example.com")
+
+		c, err := NewConfig()
+		require.NoError(t, err)
+
+		assert.Equal(t, "example.com", c.TLSDomain)
+	})
+}
+
 func TestConfig_defaults(t *testing.T) {
 	usingProgramArgs(t, "thruster", "echo", "hello")
 

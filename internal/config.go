@@ -45,7 +45,7 @@ type Config struct {
 	XSendfileEnabled      bool
 	MaxRequestBody        int
 
-	SSLDomain        string
+	TLSDomain        string
 	ACMEDirectoryURL string
 	EAB_KID          string
 	EAB_HMACKey      string
@@ -81,7 +81,7 @@ func NewConfig() (*Config, error) {
 		XSendfileEnabled:      getEnvBool("X_SENDFILE_ENABLED", true),
 		MaxRequestBody:        getEnvInt("MAX_REQUEST_BODY", defaultMaxRequestBody),
 
-		SSLDomain:        getEnvString("SSL_DOMAIN", ""),
+		TLSDomain:        getEnvString("TLS_DOMAIN", ""),
 		ACMEDirectoryURL: getEnvString("ACME_DIRECTORY", defaultACMEDirectoryURL),
 		EAB_KID:          getEnvString("EAB_KID", ""),
 		EAB_HMACKey:      getEnvString("EAB_HMAC_KEY", ""),

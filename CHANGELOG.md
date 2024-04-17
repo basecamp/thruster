@@ -1,3 +1,7 @@
+## Unreleased
+
+* [BREAKING] Rename the `SSL_DOMAIN` env to `TLS_DOMAIN` (#13)
+
 ## v0.1.3 / 2024-03-21
 
 * Disable transparent proxy compression (#11)
