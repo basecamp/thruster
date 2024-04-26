@@ -1,6 +1,7 @@
-## Unreleased
+## v0.1.4 / 2024-04-26
 
 * [BREAKING] Rename the `SSL_DOMAIN` env to `TLS_DOMAIN` (#13)
+* Set `stdin` in upstream process (#18)
 
 ## v0.1.3 / 2024-03-21
 
