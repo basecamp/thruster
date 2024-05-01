@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 )
@@ -37,7 +38,8 @@ func (s *Service) Run() int {
 
 	exitCode, err := upstream.Run()
 	if err != nil {
-		panic(err)
+		slog.Error("Failed to start wrapped process", "command", s.config.UpstreamCommand, "args", s.config.UpstreamArgs, "error", err)
+		return 1
 	}
 
 	return exitCode
