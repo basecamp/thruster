@@ -1,3 +1,7 @@
+## Unreleased
+
+* Set in the outbound request `X-Forwarded-For` (to the client IP address), `X-Forwarded-Host` (to the host name requested by the client), and `X-Forwarded-Proto` (to "http" or "https" depending on whether the inbound request was made on a TLS-enabled connection) (#29)
+
 ## v0.1.4 / 2024-04-26
 
 * [BREAKING] Rename the `SSL_DOMAIN` env to `TLS_DOMAIN` (#13)
