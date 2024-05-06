@@ -16,17 +16,27 @@ func TestConfig_tls(t *testing.T) {
 		c, err := NewConfig()
 		require.NoError(t, err)
 
-		assert.Equal(t, "", c.TLSDomain)
+		assert.Equal(t, []string{}, c.TLSDomains)
 	})
 
-	t.Run("with TLS_DOMAIN", func(t *testing.T) {
+	t.Run("with single TLS_DOMAIN", func(t *testing.T) {
 		usingProgramArgs(t, "thruster", "echo", "hello")
 		usingEnvVar(t, "TLS_DOMAIN", "example.com")
 
 		c, err := NewConfig()
 		require.NoError(t, err)
 
-		assert.Equal(t, "example.com", c.TLSDomain)
+		assert.Equal(t, []string{"example.com"}, c.TLSDomains)
+	})
+
+	t.Run("with multiple TLS_DOMAIN", func(t *testing.T) {
+		usingProgramArgs(t, "thruster", "echo", "hello")
+		usingEnvVar(t, "TLS_DOMAIN", "example.com, example.io")
+
+		c, err := NewConfig()
+		require.NoError(t, err)
+
+		assert.Equal(t, []string{"example.com", "example.io"}, c.TLSDomains)
 	})
 }
 

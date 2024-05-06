@@ -1,3 +1,7 @@
+## Unreleased
+
+* Accept comma-separated `TLS_DOMAIN` to support multiple domains (#28)
+
 ## v0.1.4 / 2024-04-26
 
 * [BREAKING] Rename the `SSL_DOMAIN` env to `TLS_DOMAIN` (#13)

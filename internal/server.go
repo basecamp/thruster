@@ -31,7 +31,7 @@ func (s *Server) Start() {
 	httpAddress := fmt.Sprintf(":%d", s.config.HttpPort)
 	httpsAddress := fmt.Sprintf(":%d", s.config.HttpsPort)
 
-	if s.config.TLSDomain != "" {
+	if len(s.config.TLSDomains) > 0 {
 		manager := s.certManager()
 
 		s.httpServer = s.defaultHttpServer(httpAddress)
@@ -44,7 +44,7 @@ func (s *Server) Start() {
 		go s.httpServer.ListenAndServe()
 		go s.httpsServer.ListenAndServeTLS("", "")
 
-		slog.Info("Server started", "http", httpAddress, "https", httpsAddress, "tls_domain", s.config.TLSDomain)
+		slog.Info("Server started", "http", httpAddress, "https", httpsAddress, "tls_domain", s.config.TLSDomains)
 	} else {
 		s.httpsServer = nil
 		s.httpServer = s.defaultHttpServer(httpAddress)
@@ -79,7 +79,7 @@ func (s *Server) certManager() *autocert.Manager {
 		Cache:                  autocert.DirCache(s.config.StoragePath),
 		Client:                 client,
 		ExternalAccountBinding: binding,
-		HostPolicy:             autocert.HostWhitelist(s.config.TLSDomain),
+		HostPolicy:             autocert.HostWhitelist(s.config.TLSDomains...),
 		Prompt:                 autocert.AcceptTOS,
 	}
 }
