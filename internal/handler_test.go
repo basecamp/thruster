@@ -155,6 +155,50 @@ func TestHandlerMaxRequestBody(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
+func TestHandlerPreserveInboundHostHeaderWhenProxying(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "example.org", r.Host)
+	}))
+	defer upstream.Close()
+
+	h := NewHandler(handlerOptions(upstream.URL))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "http://example.org", nil)
+	h.ServeHTTP(w, r)
+}
+
+func TestHandlerAppendInboundXFFHeaderWhenProxying(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "0.0.0.0, 0.0.0.1", r.Header.Get("X-Forwarded-For"))
+	}))
+	defer upstream.Close()
+
+	h := NewHandler(handlerOptions(upstream.URL))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "http://example.org", nil)
+	r.RemoteAddr = "0.0.0.1:1234"
+	r.Header.Set("X-Forwarded-For", "0.0.0.0")
+	h.ServeHTTP(w, r)
+}
+
+func TestHandlerXForwardedHeadersWhenProxying(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "1.2.3.4", r.Header.Get("X-Forwarded-For"))
+		assert.Equal(t, "example.org", r.Header.Get("X-Forwarded-Host"))
+		assert.Equal(t, "https", r.Header.Get("X-Forwarded-Proto"))
+	}))
+	defer upstream.Close()
+
+	h := NewHandler(handlerOptions(upstream.URL))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "https://example.org", nil)
+	r.RemoteAddr = "1.2.3.4:1234"
+	h.ServeHTTP(w, r)
+}
+
 // Helpers
 
 func handlerOptions(targetUrl string) HandlerOptions {

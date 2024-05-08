@@ -10,11 +10,16 @@ import (
 )
 
 func NewProxyHandler(targetUrl *url.URL, badGatewayPage string) http.Handler {
-	proxy := httputil.NewSingleHostReverseProxy(targetUrl)
-	proxy.ErrorHandler = ProxyErrorHandler(badGatewayPage)
-	proxy.Transport = createProxyTransport()
-
-	return proxy
+	return &httputil.ReverseProxy{
+		Rewrite: func(r *httputil.ProxyRequest) {
+			r.SetURL(targetUrl)
+			r.Out.Host = r.In.Host
+			r.Out.Header["X-Forwarded-For"] = r.In.Header["X-Forwarded-For"]
+			r.SetXForwarded()
+		},
+		ErrorHandler: ProxyErrorHandler(badGatewayPage),
+		Transport:    createProxyTransport(),
+	}
 }
 
 func ProxyErrorHandler(badGatewayPage string) func(w http.ResponseWriter, r *http.Request, err error) {
