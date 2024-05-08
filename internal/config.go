@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/acme"
@@ -45,7 +46,7 @@ type Config struct {
 	XSendfileEnabled      bool
 	MaxRequestBody        int
 
-	TLSDomain        string
+	TLSDomains       []string
 	ACMEDirectoryURL string
 	EAB_KID          string
 	EAB_HMACKey      string
@@ -81,7 +82,7 @@ func NewConfig() (*Config, error) {
 		XSendfileEnabled:      getEnvBool("X_SENDFILE_ENABLED", true),
 		MaxRequestBody:        getEnvInt("MAX_REQUEST_BODY", defaultMaxRequestBody),
 
-		TLSDomain:        getEnvString("TLS_DOMAIN", ""),
+		TLSDomains:       getEnvStrings("TLS_DOMAIN", []string{}),
 		ACMEDirectoryURL: getEnvString("ACME_DIRECTORY", defaultACMEDirectoryURL),
 		EAB_KID:          getEnvString("EAB_KID", ""),
 		EAB_HMACKey:      getEnvString("EAB_HMAC_KEY", ""),
@@ -116,6 +117,21 @@ func getEnvString(key, defaultValue string) string {
 	value, ok := findEnv(key)
 	if ok {
 		return value
+	}
+
+	return defaultValue
+}
+
+func getEnvStrings(key string, defaultValue []string) []string {
+	value, ok := findEnv(key)
+	if ok {
+		items := strings.Split(value, ",")
+
+		for i, item := range items {
+			items[i] = strings.TrimSpace(item)
+		}
+
+		return items
 	}
 
 	return defaultValue
