@@ -1,7 +1,7 @@
 .PHONY: build dist test bench clean
 
 PLATFORMS = linux darwin
-ARCHITECTURES = amd64 arm64 x86_64-linux
+ARCHITECTURES = amd64 arm64
 
 build:
 	go build -o bin/ ./cmd/...
