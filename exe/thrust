@@ -1,6 +1,11 @@
 #! /usr/bin/env ruby
 
-PLATFORM = [ :cpu, :os ].map { |m| Gem::Platform.local.send(m) }.join("-")
+platform = [ :cpu, :os ].map { |m| Gem::Platform.local.send(m) }
+if platform[0] == "x86_64"
+  platform[0] = "amd64"
+end
+PLATFORM = platform.join("-")
+
 EXECUTABLE = File.expand_path(File.join(__dir__, PLATFORM, "thrust"))
 
 if File.exist?(EXECUTABLE)
