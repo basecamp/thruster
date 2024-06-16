@@ -116,11 +116,7 @@ func (s *Server) localTLSConfig() *tls.Config {
 }
 
 func (s *Server) getLocalCertificate(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-  name := hello.ServerName
-  if name == "" {
-    return nil, errors.New("thruster_local_tls: missing server name")
-  }
-    
+  name := s.config.TLS_DOMAIN
   name, err := idna.Lookup.ToASCII(name)
   if err != nil {
 		return nil, errors.New("thruster/local_tls: server name contains invalid character")
