@@ -46,6 +46,7 @@ type Config struct {
 	MaxRequestBody        int
 
 	TLSDomain        string
+  TLSLocal         bool
 	ACMEDirectoryURL string
 	EAB_KID          string
 	EAB_HMACKey      string
@@ -82,6 +83,7 @@ func NewConfig() (*Config, error) {
 		MaxRequestBody:        getEnvInt("MAX_REQUEST_BODY", defaultMaxRequestBody),
 
 		TLSDomain:        getEnvString("TLS_DOMAIN", ""),
+    TLSLocal:         getEnvBool("TLS_LOCAL", false),
 		ACMEDirectoryURL: getEnvString("ACME_DIRECTORY", defaultACMEDirectoryURL),
 		EAB_KID:          getEnvString("EAB_KID", ""),
 		EAB_HMACKey:      getEnvString("EAB_HMAC_KEY", ""),
