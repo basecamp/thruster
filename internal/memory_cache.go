@@ -55,13 +55,19 @@ func (c *MemoryCache) Set(key CacheKey, value []byte, expiresAt time.Time) {
 		c.evictOldestItem()
 	}
 
+	existingItem, ok := c.items[key]
+	if ok {
+		c.size -= len(existingItem.value)
+	} else {
+		c.keys = append(c.keys, key)
+	}
+
 	c.items[key] = &MemoryCacheEntry{
 		lastAccessedAt: c.getCurrentTime(),
 		expiresAt:      expiresAt,
 		value:          value,
 	}
 
-	c.keys = append(c.keys, key)
 	c.size += itemSize
 
 	slog.Debug("Cache: added item", "key", key, "size", itemSize, "expires_at", expiresAt)

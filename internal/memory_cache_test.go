@@ -27,6 +27,15 @@ func TestMemoryCache_storing_updates_existing_value(t *testing.T) {
 	assert.Equal(t, []byte("second"), read)
 }
 
+func TestMemoryCache_storing_existing_value_keeps_keys_and_size_correct(t *testing.T) {
+	c := NewMemoryCache(32*MB, 1*MB)
+	c.Set(1, []byte("first"), time.Now().Add(30*time.Second))
+	c.Set(1, []byte("second"), time.Now().Add(30*time.Second))
+
+	assert.Equal(t, 1, len(c.keys))
+	assert.Equal(t, 6, c.size)
+}
+
 func TestMemoryCache_expiry(t *testing.T) {
 	c := NewMemoryCache(32*MB, 1*MB)
 	now := time.Date(2023, 1, 22, 17, 30, 0, 0, time.UTC)
