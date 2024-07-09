@@ -1,7 +1,10 @@
-## Unreleased
+## v0.1.5 / 2024-07-09
 
+* Fix bug where replacing existing cache items could lead to a crash during
+  eviction
 * Accept comma-separated `TLS_DOMAIN` to support multiple domains (#28)
-* Set in the outbound request `X-Forwarded-For` (to the client IP address), `X-Forwarded-Host` (to the host name requested by the client), and `X-Forwarded-Proto` (to "http" or "https" depending on whether the inbound request was made on a TLS-enabled connection) (#29)
+* Populate `X-Forwarded-For`, `X-Forwarded-Host` and `X-Forwarded-Proto`
+  headers (#29)
 
 ## v0.1.4 / 2024-04-26
 
