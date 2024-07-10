@@ -126,12 +126,16 @@ func getEnvStrings(key string, defaultValue []string) []string {
 	value, ok := findEnv(key)
 	if ok {
 		items := strings.Split(value, ",")
+		result := []string{}
 
-		for i, item := range items {
-			items[i] = strings.TrimSpace(item)
+		for _, item := range items {
+			item = strings.TrimSpace(item)
+			if item != "" {
+				result = append(result, item)
+			}
 		}
 
-		return items
+		return result
 	}
 
 	return defaultValue
