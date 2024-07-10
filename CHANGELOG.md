@@ -1,3 +1,7 @@
+## v0.1.6 / 2024-07-10
+
+* Properly handle an empty TLS_DOMAIN value
+
 ## v0.1.5 / 2024-07-09
 
 * Fix bug where replacing existing cache items could lead to a crash during
