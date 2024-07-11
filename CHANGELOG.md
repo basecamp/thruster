@@ -1,3 +1,7 @@
+## v0.1.7 / 2024-07-11
+
+* Preserve existing X-Forwarded-* headers when present
+
 ## v0.1.6 / 2024-07-10
 
 * Properly handle an empty TLS_DOMAIN value
