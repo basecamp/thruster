@@ -199,6 +199,24 @@ func TestHandlerXForwardedHeadersWhenProxying(t *testing.T) {
 	h.ServeHTTP(w, r)
 }
 
+func TestHandlerXForwardedHeadersRespectExistingHeaders(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "1.2.3.4", r.Header.Get("X-Forwarded-For"))
+		assert.Equal(t, "other.example.com", r.Header.Get("X-Forwarded-Host"))
+		assert.Equal(t, "https", r.Header.Get("X-Forwarded-Proto"))
+	}))
+	defer upstream.Close()
+
+	h := NewHandler(handlerOptions(upstream.URL))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "http://example.org", nil)
+	r.Header.Set("X-Forwarded-Proto", "https")
+	r.Header.Set("X-Forwarded-Host", "other.example.com")
+	r.RemoteAddr = "1.2.3.4:1234"
+	h.ServeHTTP(w, r)
+}
+
 // Helpers
 
 func handlerOptions(targetUrl string) HandlerOptions {

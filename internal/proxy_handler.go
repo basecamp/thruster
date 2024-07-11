@@ -15,7 +15,7 @@ func NewProxyHandler(targetUrl *url.URL, badGatewayPage string) http.Handler {
 			r.SetURL(targetUrl)
 			r.Out.Host = r.In.Host
 			r.Out.Header["X-Forwarded-For"] = r.In.Header["X-Forwarded-For"]
-			r.SetXForwarded()
+			setXForwarded(r)
 		},
 		ErrorHandler: ProxyErrorHandler(badGatewayPage),
 		Transport:    createProxyTransport(),
@@ -44,6 +44,19 @@ func ProxyErrorHandler(badGatewayPage string) func(w http.ResponseWriter, r *htt
 		} else {
 			w.WriteHeader(http.StatusBadGateway)
 		}
+	}
+}
+
+func setXForwarded(r *httputil.ProxyRequest) {
+	// Populate new headers by default
+	r.SetXForwarded()
+
+	// Preserve original headers if we had them
+	if r.In.Header.Get("X-Forwarded-Host") != "" {
+		r.Out.Header.Set("X-Forwarded-Host", r.In.Header.Get("X-Forwarded-Host"))
+	}
+	if r.In.Header.Get("X-Forwarded-Proto") != "" {
+		r.Out.Header.Set("X-Forwarded-Proto", r.In.Header.Get("X-Forwarded-Proto"))
 	}
 }
 
