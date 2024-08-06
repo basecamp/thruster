@@ -17,6 +17,8 @@ func TestConfig_tls(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, []string{}, c.TLSDomains)
+		assert.False(t, c.HasTLS())
+		assert.True(t, c.ForwardHeaders)
 	})
 
 	t.Run("with an empty TLS_DOMAIN", func(t *testing.T) {
@@ -27,6 +29,8 @@ func TestConfig_tls(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, []string{}, c.TLSDomains)
+		assert.False(t, c.HasTLS())
+		assert.True(t, c.ForwardHeaders)
 	})
 
 	t.Run("with single TLS_DOMAIN", func(t *testing.T) {
@@ -37,6 +41,8 @@ func TestConfig_tls(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, []string{"example.com"}, c.TLSDomains)
+		assert.True(t, c.HasTLS())
+		assert.False(t, c.ForwardHeaders)
 	})
 
 	t.Run("with multiple TLS_DOMAIN", func(t *testing.T) {
@@ -47,6 +53,8 @@ func TestConfig_tls(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, []string{"example.com", "example.io"}, c.TLSDomains)
+		assert.True(t, c.HasTLS())
+		assert.False(t, c.ForwardHeaders)
 	})
 
 	t.Run("with TLS_DOMAIN containing whitespace", func(t *testing.T) {
@@ -57,6 +65,33 @@ func TestConfig_tls(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, []string{"example.com", "example.io"}, c.TLSDomains)
+		assert.True(t, c.HasTLS())
+		assert.False(t, c.ForwardHeaders)
+	})
+
+	t.Run("overriding with FORWARD_HEADERS when using TLS", func(t *testing.T) {
+		usingProgramArgs(t, "thruster", "echo", "hello")
+		usingEnvVar(t, "TLS_DOMAIN", "example.com")
+		usingEnvVar(t, "FORWARD_HEADERS", "true")
+
+		c, err := NewConfig()
+		require.NoError(t, err)
+
+		assert.Equal(t, []string{"example.com"}, c.TLSDomains)
+		assert.True(t, c.HasTLS())
+		assert.True(t, c.ForwardHeaders)
+	})
+
+	t.Run("overriding with FORWARD_HEADERS when not using TLS", func(t *testing.T) {
+		usingProgramArgs(t, "thruster", "echo", "hello")
+		usingEnvVar(t, "FORWARD_HEADERS", "false")
+
+		c, err := NewConfig()
+		require.NoError(t, err)
+
+		assert.Empty(t, c.TLSDomains)
+		assert.False(t, c.HasTLS())
+		assert.False(t, c.ForwardHeaders)
 	})
 }
 

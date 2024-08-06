@@ -15,10 +15,11 @@ type HandlerOptions struct {
 	maxRequestBody           int
 	targetUrl                *url.URL
 	xSendfileEnabled         bool
+	forwardHeaders           bool
 }
 
 func NewHandler(options HandlerOptions) http.Handler {
-	handler := NewProxyHandler(options.targetUrl, options.badGatewayPage)
+	handler := NewProxyHandler(options.targetUrl, options.badGatewayPage, options.forwardHeaders)
 	handler = NewCacheHandler(options.cache, options.maxCacheableResponseBody, handler)
 	handler = NewSendfileHandler(options.xSendfileEnabled, handler)
 	handler = gzhttp.GzipHandler(handler)

@@ -9,13 +9,12 @@ import (
 	"os"
 )
 
-func NewProxyHandler(targetUrl *url.URL, badGatewayPage string) http.Handler {
+func NewProxyHandler(targetUrl *url.URL, badGatewayPage string, forwardHeaders bool) http.Handler {
 	return &httputil.ReverseProxy{
 		Rewrite: func(r *httputil.ProxyRequest) {
 			r.SetURL(targetUrl)
 			r.Out.Host = r.In.Host
-			r.Out.Header["X-Forwarded-For"] = r.In.Header["X-Forwarded-For"]
-			setXForwarded(r)
+			setXForwarded(r, forwardHeaders)
 		},
 		ErrorHandler: ProxyErrorHandler(badGatewayPage),
 		Transport:    createProxyTransport(),
@@ -47,16 +46,21 @@ func ProxyErrorHandler(badGatewayPage string) func(w http.ResponseWriter, r *htt
 	}
 }
 
-func setXForwarded(r *httputil.ProxyRequest) {
-	// Populate new headers by default
+func setXForwarded(r *httputil.ProxyRequest, forwardHeaders bool) {
+	if forwardHeaders {
+		r.Out.Header["X-Forwarded-For"] = r.In.Header["X-Forwarded-For"]
+	}
+
 	r.SetXForwarded()
 
-	// Preserve original headers if we had them
-	if r.In.Header.Get("X-Forwarded-Host") != "" {
-		r.Out.Header.Set("X-Forwarded-Host", r.In.Header.Get("X-Forwarded-Host"))
-	}
-	if r.In.Header.Get("X-Forwarded-Proto") != "" {
-		r.Out.Header.Set("X-Forwarded-Proto", r.In.Header.Get("X-Forwarded-Proto"))
+	if forwardHeaders {
+		// Preserve original headers if we had them
+		if r.In.Header.Get("X-Forwarded-Host") != "" {
+			r.Out.Header.Set("X-Forwarded-Host", r.In.Header.Get("X-Forwarded-Host"))
+		}
+		if r.In.Header.Get("X-Forwarded-Proto") != "" {
+			r.Out.Header.Set("X-Forwarded-Proto", r.In.Header.Get("X-Forwarded-Proto"))
+		}
 	}
 }
 

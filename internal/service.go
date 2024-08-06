@@ -25,6 +25,7 @@ func (s *Service) Run() int {
 		maxCacheableResponseBody: s.config.MaxCacheItemSizeBytes,
 		maxRequestBody:           s.config.MaxRequestBody,
 		badGatewayPage:           s.config.BadGatewayPage,
+		forwardHeaders:           s.config.ForwardHeaders,
 	}
 
 	handler := NewHandler(handlerOptions)

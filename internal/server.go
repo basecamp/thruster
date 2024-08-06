@@ -31,7 +31,7 @@ func (s *Server) Start() {
 	httpAddress := fmt.Sprintf(":%d", s.config.HttpPort)
 	httpsAddress := fmt.Sprintf(":%d", s.config.HttpsPort)
 
-	if len(s.config.TLSDomains) > 0 {
+	if s.config.HasTLS() {
 		manager := s.certManager()
 
 		s.httpServer = s.defaultHttpServer(httpAddress)

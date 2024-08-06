@@ -59,6 +59,8 @@ type Config struct {
 	HttpReadTimeout  time.Duration
 	HttpWriteTimeout time.Duration
 
+	ForwardHeaders bool
+
 	LogLevel slog.Level
 }
 
@@ -72,7 +74,7 @@ func NewConfig() (*Config, error) {
 		logLevel = slog.LevelDebug
 	}
 
-	return &Config{
+	config := &Config{
 		TargetPort:      getEnvInt("TARGET_PORT", defaultTargetPort),
 		UpstreamCommand: os.Args[1],
 		UpstreamArgs:    os.Args[2:],
@@ -96,7 +98,15 @@ func NewConfig() (*Config, error) {
 		HttpWriteTimeout: getEnvDuration("HTTP_WRITE_TIMEOUT", defaultHttpWriteTimeout),
 
 		LogLevel: logLevel,
-	}, nil
+	}
+
+	config.ForwardHeaders = getEnvBool("FORWARD_HEADERS", !config.HasTLS())
+
+	return config, nil
+}
+
+func (c *Config) HasTLS() bool {
+	return len(c.TLSDomains) > 0
 }
 
 func findEnv(key string) (string, bool) {
