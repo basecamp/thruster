@@ -1,3 +1,7 @@
+## v0.1.8 / 2024-08-06
+
+* Only forward X-Forwarded-* by default when not using TLS
+
 ## v0.1.7 / 2024-07-11
 
 * Preserve existing X-Forwarded-* headers when present
