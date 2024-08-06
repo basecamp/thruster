@@ -73,7 +73,7 @@ configuration. But if you need to customize its behavior, there are a few
 environment variables that you can set.
 
 | Variable Name         | Description                                             | Default Value |
-|-----------------------|-------------------------------------------------------------------------|
+|-----------------------|---------------------------------------------------------|---------------|
 | `TLS_DOMAIN`          | Comma-separated list of domain names to use for TLS provisioning. If not set, TLS will be disabled. | None |
 | `TARGET_PORT`         | The port that your Puma server should run on. Thruster will set `PORT` to this value when starting your server. | 3000 |
 | `CACHE_SIZE`          | The size of the HTTP cache in bytes. | 64MB |
