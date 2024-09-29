@@ -9,10 +9,6 @@ NATIVE_PLATFORMS = {
 
 BASE_GEMSPEC = Bundler.load_gemspec("thruster.gemspec")
 
-gem_path = Gem::PackageTask.new(BASE_GEMSPEC).define
-desc "Build the ruby gem"
-task "gem:ruby" => [ gem_path ]
-
 desc "Build native executables"
 namespace :build do
   task :native do
@@ -28,7 +24,6 @@ NATIVE_PLATFORMS.each do |platform, executable|
 
     gemspec.platform = platform
     gemspec.files << exepath
-
     gem_path = Gem::PackageTask.new(gemspec).define
     desc "Build the #{platform} gem"
     task "gem:#{platform}" => [gem_path]
@@ -42,5 +37,23 @@ NATIVE_PLATFORMS.each do |platform, executable|
     CLOBBER.add(exedir)
   end
 end
+
+
+gemspec = BASE_GEMSPEC.dup
+exe_paths = NATIVE_PLATFORMS.map do |native_platform, native_executable|
+  exedir = File.join(gemspec.bindir, native_platform)
+  exepath = File.join(exedir, "thrust")
+  directory exedir
+  file exepath => [ exedir ] do
+    FileUtils.cp native_executable, exepath
+    FileUtils.chmod(0755, exepath )
+  end
+  exepath
+end
+
+gemspec.files += exe_paths
+gem_path = Gem::PackageTask.new(gemspec).define
+desc "Build the ruby gem"
+task "gem:ruby" => [gem_path]
 
 CLOBBER.add("dist")

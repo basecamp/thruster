@@ -1,11 +1,15 @@
 #! /usr/bin/env ruby
 
-PLATFORM = [ :cpu, :os ].map { |m| Gem::Platform.local.send(m) }.join("-")
-EXECUTABLE = File.expand_path(File.join(__dir__, PLATFORM, "thrust"))
+EXECUTE_PLATFORM = if RUBY_PLATFORM == 'java'
+  %w[target_cpu target_os].map { |m| RbConfig::CONFIG[m] }.join("-")
+else
+  [ :cpu, :os ].map { |m| Gem::Platform.local.send(m) }.join("-")
+end
+EXECUTABLE = File.expand_path(File.join(__dir__, EXECUTE_PLATFORM, "thrust"))
 
 if File.exist?(EXECUTABLE)
   exec(EXECUTABLE, *ARGV)
 else
-  STDERR.puts("ERROR: Unsupported platform: #{PLATFORM}")
+  STDERR.puts("ERROR: Unsupported platform: #{EXECUTE_PLATFORM}")
   exit 1
 end
