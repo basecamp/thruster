@@ -1,7 +1,7 @@
 #! /usr/bin/env ruby
 
 EXECUTE_PLATFORM = if RUBY_PLATFORM == 'java'
-  %w[target_cpu target_os].map { |m| RbConfig::CONFIG[m] }.join("-")
+  %w[target_cpu target_os].map { |m| RbConfig::CONFIG[m] }.join("-").gsub('-musl','')
 else
   [ :cpu, :os ].map { |m| Gem::Platform.local.send(m) }.join("-")
 end
