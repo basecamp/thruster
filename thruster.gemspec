@@ -18,4 +18,6 @@ Gem::Specification.new do |s|
   s.files = Dir[ "{lib}/**/*", "MIT-LICENSE", "README.md" ]
   s.bindir = "exe"
   s.executables << "thrust"
+
+  s.add_dependency "railties", ">= 7.2"
 end
