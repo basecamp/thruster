@@ -1,6 +1,6 @@
 module github.com/basecamp/thruster
 
-go 1.22.1
+go 1.22.7
 
 require (
 	github.com/klauspost/compress v1.17.4
