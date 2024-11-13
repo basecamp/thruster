@@ -1,3 +1,7 @@
+## v0.1.9 / 2024-11-13
+
+* Build with Go 1.23.3
+
 ## v0.1.8 / 2024-08-06
 
 * Only forward X-Forwarded-* by default when not using TLS
