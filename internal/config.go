@@ -102,7 +102,7 @@ func NewConfig() (*Config, error) {
 		HttpWriteTimeout: getEnvDuration("HTTP_WRITE_TIMEOUT", defaultHttpWriteTimeout),
 
 		LogLevel:    logLevel,
-		LogRequests: getEnvBool("LOG_REQUESTS", true),
+		LogRequests: getEnvBool("LOG_REQUESTS", defaultLogRequests),
 	}
 
 	config.ForwardHeaders = getEnvBool("FORWARD_HEADERS", !config.HasTLS())
