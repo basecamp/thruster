@@ -293,5 +293,6 @@ func handlerOptions(targetUrl string) HandlerOptions {
 		maxCacheableResponseBody: 1024,
 		badGatewayPage:           "",
 		forwardHeaders:           true,
+		logRequests:              true,
 	}
 }
