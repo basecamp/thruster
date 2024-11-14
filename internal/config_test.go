@@ -115,6 +115,7 @@ func TestConfig_override_defaults_with_env_vars(t *testing.T) {
 	usingEnvVar(t, "X_SENDFILE_ENABLED", "0")
 	usingEnvVar(t, "DEBUG", "1")
 	usingEnvVar(t, "ACME_DIRECTORY", "https://acme-staging-v02.api.letsencrypt.org/directory")
+	usingEnvVar(t, "LOG_REQUESTS", "false")
 
 	c, err := NewConfig()
 	require.NoError(t, err)
@@ -125,6 +126,7 @@ func TestConfig_override_defaults_with_env_vars(t *testing.T) {
 	assert.Equal(t, false, c.XSendfileEnabled)
 	assert.Equal(t, slog.LevelDebug, c.LogLevel)
 	assert.Equal(t, "https://acme-staging-v02.api.letsencrypt.org/directory", c.ACMEDirectoryURL)
+	assert.Equal(t, false, c.LogRequests)
 }
 
 func TestConfig_override_defaults_with_env_vars_using_prefix(t *testing.T) {
@@ -134,6 +136,7 @@ func TestConfig_override_defaults_with_env_vars_using_prefix(t *testing.T) {
 	usingEnvVar(t, "THRUSTER_HTTP_READ_TIMEOUT", "5")
 	usingEnvVar(t, "THRUSTER_X_SENDFILE_ENABLED", "0")
 	usingEnvVar(t, "THRUSTER_DEBUG", "1")
+	usingEnvVar(t, "THRUSTER_LOG_REQUESTS", "0")
 
 	c, err := NewConfig()
 	require.NoError(t, err)
@@ -143,6 +146,7 @@ func TestConfig_override_defaults_with_env_vars_using_prefix(t *testing.T) {
 	assert.Equal(t, 5*time.Second, c.HttpReadTimeout)
 	assert.Equal(t, false, c.XSendfileEnabled)
 	assert.Equal(t, slog.LevelDebug, c.LogLevel)
+	assert.Equal(t, false, c.LogRequests)
 }
 
 func TestConfig_prefixed_variables_take_precedence_over_non_prefixed(t *testing.T) {
