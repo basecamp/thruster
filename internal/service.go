@@ -22,6 +22,7 @@ func (s *Service) Run() int {
 		cache:                    s.cache(),
 		targetUrl:                s.targetUrl(),
 		xSendfileEnabled:         s.config.XSendfileEnabled,
+		gzipCompressionEnabled:   s.config.GzipCompressionEnabled,
 		maxCacheableResponseBody: s.config.MaxCacheItemSizeBytes,
 		maxRequestBody:           s.config.MaxRequestBody,
 		badGatewayPage:           s.config.BadGatewayPage,
