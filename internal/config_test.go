@@ -156,6 +156,20 @@ func TestConfig_prefixed_variables_take_precedence_over_non_prefixed(t *testing.
 	assert.Equal(t, 4000, c.TargetPort)
 }
 
+func TestConfig_defaults_are_used_if_strconv_fails(t *testing.T) {
+	usingProgramArgs(t, "thruster", "echo", "hello")
+	usingEnvVar(t, "TARGET_PORT", "should-be-an-int")
+	usingEnvVar(t, "HTTP_IDLE_TIMEOUT", "should-be-a-duration")
+	usingEnvVar(t, "X_SENDFILE_ENABLED", "should-be-a-bool")
+
+	c, err := NewConfig()
+	require.NoError(t, err)
+
+	assert.Equal(t, 3000, c.TargetPort)
+	assert.Equal(t, 60*time.Second, c.HttpIdleTimeout)
+	assert.Equal(t, true, c.XSendfileEnabled)
+}
+
 func TestConfig_return_error_when_no_upstream_command(t *testing.T) {
 	usingProgramArgs(t, "thruster")
 
