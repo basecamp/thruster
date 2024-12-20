@@ -26,6 +26,7 @@ func (s *Service) Run() int {
 		maxRequestBody:           s.config.MaxRequestBody,
 		badGatewayPage:           s.config.BadGatewayPage,
 		forwardHeaders:           s.config.ForwardHeaders,
+		logRequests:              s.config.LogRequests,
 	}
 
 	handler := NewHandler(handlerOptions)

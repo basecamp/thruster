@@ -33,7 +33,8 @@ const (
 	defaultHttpReadTimeout  = 30 * time.Second
 	defaultHttpWriteTimeout = 30 * time.Second
 
-	defaultLogLevel = slog.LevelInfo
+	defaultLogLevel    = slog.LevelInfo
+	defaultLogRequests = true
 )
 
 type Config struct {
@@ -61,7 +62,8 @@ type Config struct {
 
 	ForwardHeaders bool
 
-	LogLevel slog.Level
+	LogLevel    slog.Level
+	LogRequests bool
 }
 
 func NewConfig() (*Config, error) {
@@ -97,7 +99,8 @@ func NewConfig() (*Config, error) {
 		HttpReadTimeout:  getEnvDuration("HTTP_READ_TIMEOUT", defaultHttpReadTimeout),
 		HttpWriteTimeout: getEnvDuration("HTTP_WRITE_TIMEOUT", defaultHttpWriteTimeout),
 
-		LogLevel: logLevel,
+		LogLevel:    logLevel,
+		LogRequests: getEnvBool("LOG_REQUESTS", defaultLogRequests),
 	}
 
 	config.ForwardHeaders = getEnvBool("FORWARD_HEADERS", !config.HasTLS())
