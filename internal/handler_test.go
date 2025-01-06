@@ -33,6 +33,30 @@ func TestHandlerGzipCompression_when_proxying(t *testing.T) {
 	assert.Less(t, transferredSize, fixtureLength("loremipsum.txt"))
 }
 
+func TestNotHandlerGzipCompression_when_disabled(t *testing.T) {
+	fixtureLength := strconv.FormatInt(fixtureLength("loremipsum.txt"), 10)
+
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", fixtureLength)
+		w.Write(fixtureContent("loremipsum.txt"))
+	}))
+	defer upstream.Close()
+
+	options := handlerOptions(upstream.URL)
+	options.gzipCompressionEnabled = false
+	h := NewHandler(options)
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/", nil)
+	r.Header.Set("Accept-Encoding", "gzip")
+	h.ServeHTTP(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Header().Get("Content-Type"), "text/plain")
+	assert.Empty(t, w.Header().Get("Content-Encoding"))
+	assert.Equal(t, fixtureLength, w.Header().Get("Content-Length"))
+}
+
 func TestHandlerGzipCompression_is_not_applied_when_not_requested(t *testing.T) {
 	fixtureLength := strconv.FormatInt(fixtureLength("loremipsum.txt"), 10)
 
@@ -248,6 +272,7 @@ func handlerOptions(targetUrl string) HandlerOptions {
 		cache:                    NewMemoryCache(defaultCacheSize, defaultMaxCacheItemSizeBytes),
 		targetUrl:                url,
 		xSendfileEnabled:         true,
+		gzipCompressionEnabled:   true,
 		maxCacheableResponseBody: 1024,
 		badGatewayPage:           "",
 		forwardHeaders:           true,
