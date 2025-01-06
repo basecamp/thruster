@@ -1,3 +1,7 @@
+## v0.1.10 / 2025-01-06
+
+* Avoid runtime glibc dependency in dist builds
+
 ## v0.1.9 / 2024-11-13
 
 * Build with Go 1.23.3
