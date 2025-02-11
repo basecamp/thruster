@@ -182,7 +182,7 @@ func (s *Server) getLocalAuthority() (*tls.Certificate, error) {
 		return &cert, nil
 	}
 
-	err = os.Mkdir(s.config.StoragePath, 0750)
+	err = os.MkdirAll(s.config.StoragePath, 0750)
 
 	keyUsage := x509.KeyUsageDigitalSignature
 	keyUsage |= x509.KeyUsageKeyEncipherment
