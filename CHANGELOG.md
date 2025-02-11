@@ -1,3 +1,8 @@
+## v0.1.11 / 2025-02-11
+
+* Build with Go 1.23.6 (#67)
+* Allow disabling compression with env var (#56)
+
 ## v0.1.10 / 2025-01-06
 
 * Avoid runtime glibc dependency in dist builds
