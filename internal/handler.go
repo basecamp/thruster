@@ -17,6 +17,7 @@ type HandlerOptions struct {
 	xSendfileEnabled         bool
 	gzipCompressionEnabled   bool
 	forwardHeaders           bool
+	logRequests              bool
 }
 
 func NewHandler(options HandlerOptions) http.Handler {
@@ -31,7 +32,9 @@ func NewHandler(options HandlerOptions) http.Handler {
 		handler = http.MaxBytesHandler(handler, int64(options.maxRequestBody))
 	}
 
-	handler = NewLoggingMiddleware(slog.Default(), handler)
+	if options.logRequests {
+		handler = NewLoggingMiddleware(slog.Default(), handler)
+	}
 
 	return handler
 }
