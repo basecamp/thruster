@@ -1,6 +1,6 @@
 .PHONY: build dist test bench clean
 
-PLATFORMS = linux darwin
+PLATFORMS = linux darwin freebsd
 ARCHITECTURES = amd64 arm64
 
 build:
