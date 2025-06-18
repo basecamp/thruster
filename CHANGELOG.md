@@ -1,3 +1,7 @@
+## v0.1.14 / 2025-06-18
+
+* Build with Go 1.24.4 (#81)
+
 ## v0.1.13 / 2025-04-21
 
 * Update deps to address CVEs (#74)
