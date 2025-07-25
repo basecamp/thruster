@@ -31,6 +31,7 @@ func NewHandler(options HandlerOptions) http.Handler {
 		handler = http.MaxBytesHandler(handler, int64(options.maxRequestBody))
 	}
 
+	handler = NewRequestStartMiddleware(handler)
 	handler = NewLoggingMiddleware(slog.Default(), handler)
 
 	return handler
