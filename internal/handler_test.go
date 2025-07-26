@@ -263,6 +263,23 @@ func TestHandlerXForwardedHeadersDropsExistingHeadersWhenForwardingNotEnabled(t 
 	h.ServeHTTP(w, r)
 }
 
+func TestHandlerAddsXRequestStartHeader(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		header := r.Header.Get("X-Request-Start")
+		assert.NotEmpty(t, header, "X-Request-Start header should be present")
+		assert.Regexp(t, `^t=\d+$`, header, "X-Request-Start header should be in format t=msec")
+	}))
+	defer upstream.Close()
+
+	h := NewHandler(handlerOptions(upstream.URL))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/", nil)
+	h.ServeHTTP(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
 // Helpers
 
 func handlerOptions(targetUrl string) HandlerOptions {
