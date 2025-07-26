@@ -33,3 +33,20 @@ func TestRequestStartMiddleware(t *testing.T) {
 	assert.GreaterOrEqual(t, timestamp, before)
 	assert.LessOrEqual(t, timestamp, after)
 }
+
+func TestRequestStartMiddlewareDoesNotOverwriteExistingHeader(t *testing.T) {
+	existingHeader := "t=1234567890"
+	var capturedHeader string
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedHeader = r.Header.Get("X-Request-Start")
+	})
+
+	middleware := NewRequestStartMiddleware(nextHandler)
+
+	req := httptest.NewRequest("GET", "/", nil)
+	req.Header.Set("X-Request-Start", existingHeader)
+	w := httptest.NewRecorder()
+	middleware.ServeHTTP(w, req)
+
+	assert.Equal(t, existingHeader, capturedHeader)
+}
