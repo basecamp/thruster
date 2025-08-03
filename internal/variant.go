@@ -25,6 +25,7 @@ func (v *Variant) CacheKey() CacheKey {
 	hash.Write([]byte(v.r.Method))
 	hash.Write([]byte(v.r.URL.Path))
 	hash.Write([]byte(v.r.URL.Query().Encode()))
+	hash.Write([]byte(v.r.Host))
 
 	for _, name := range v.headerNames {
 		hash.Write([]byte(name + "=" + v.r.Header.Get(name)))
