@@ -75,6 +75,13 @@ func (c *CacheableResponse) WriteHeader(statusCode int) {
 	c.headersWritten = true
 }
 
+func (c *CacheableResponse) Flush() {
+	flusher, ok := c.responseWriter.(http.Flusher)
+	if ok {
+		flusher.Flush()
+	}
+}
+
 func (c *CacheableResponse) CacheStatus() (bool, time.Time) {
 	if c.stasher.Overflowed() {
 		return false, time.Time{}

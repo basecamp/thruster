@@ -87,3 +87,10 @@ func (r *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	}
 	return con, rw, err
 }
+
+func (r *responseWriter) Flush() {
+	flusher, ok := r.ResponseWriter.(http.Flusher)
+	if ok {
+		flusher.Flush()
+	}
+}
