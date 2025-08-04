@@ -17,12 +17,15 @@ type HandlerOptions struct {
 	xSendfileEnabled         bool
 	gzipCompressionEnabled   bool
 	forwardHeaders           bool
+	logRequests              bool
 }
 
 func NewHandler(options HandlerOptions) http.Handler {
 	handler := NewProxyHandler(options.targetUrl, options.badGatewayPage, options.forwardHeaders)
 	handler = NewCacheHandler(options.cache, options.maxCacheableResponseBody, handler)
 	handler = NewSendfileHandler(options.xSendfileEnabled, handler)
+	handler = NewRequestStartMiddleware(handler)
+
 	if options.gzipCompressionEnabled {
 		handler = gzhttp.GzipHandler(handler)
 	}
@@ -31,8 +34,9 @@ func NewHandler(options HandlerOptions) http.Handler {
 		handler = http.MaxBytesHandler(handler, int64(options.maxRequestBody))
 	}
 
-	handler = NewRequestStartMiddleware(handler)
-	handler = NewLoggingMiddleware(slog.Default(), handler)
+	if options.logRequests {
+		handler = NewLoggingMiddleware(slog.Default(), handler)
+	}
 
 	return handler
 }
