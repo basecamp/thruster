@@ -92,6 +92,7 @@ environment variables that you can set.
 | `EAB_KID`                   | The EAB key identifier to use when provisioning TLS certificates, if required. | None |
 | `EAB_HMAC_KEY`              | The Base64-encoded EAB HMAC key to use when provisioning TLS certificates, if required. | None |
 | `FORWARD_HEADERS`           | Whether to forward X-Forwarded-* headers from the client. | Disabled when running with TLS; enabled otherwise |
+| `LOG_REQUESTS`              | Log all requests. Set to `0` or `false` to disable request logging | Enabled |
 | `DEBUG`                     | Set to `1` or `true` to enable debug logging. | Disabled |
 
 To prevent naming clashes with your application's own environment variables,
