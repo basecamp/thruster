@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -162,6 +163,52 @@ func TestCacheHandler_vary_header(t *testing.T) {
 
 	resp = doReq("application/json", "b")
 	assert.Equal(t, "application/json", resp.Body.String())
+	assert.Equal(t, "hit", resp.Header().Get("X-Cache"))
+}
+
+func TestCacheHandler_different_hosts(t *testing.T) {
+	cache := newTestCache()
+	handler := NewCacheHandler(cache, 1024, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		host := r.Header.Get("Host")
+		w.Header().Set("Cache-Control", "public, max-age=600")
+		w.Write([]byte(host))
+	}))
+
+	doReq := func(url string) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", url, nil)
+		host := strings.Split(url, "://")[1]
+		r.Header.Set("Host", host)
+		handler.ServeHTTP(w, r)
+		return w
+	}
+
+	resp := doReq("https://example.com")
+	assert.Equal(t, "example.com", resp.Body.String())
+	assert.Equal(t, "miss", resp.Header().Get("X-Cache"))
+
+	resp = doReq("https://example.com")
+	assert.Equal(t, "example.com", resp.Body.String())
+	assert.Equal(t, "hit", resp.Header().Get("X-Cache"))
+
+	resp = doReq("https://another.com")
+	assert.Equal(t, "another.com", resp.Body.String())
+	assert.Equal(t, "miss", resp.Header().Get("X-Cache"))
+
+	resp = doReq("https://another.com")
+	assert.Equal(t, "another.com", resp.Body.String())
+	assert.Equal(t, "hit", resp.Header().Get("X-Cache"))
+
+	resp = doReq("https://example.com/test")
+	assert.Equal(t, "example.com/test", resp.Body.String())
+	assert.Equal(t, "miss", resp.Header().Get("X-Cache"))
+
+	resp = doReq("https://another.com/test")
+	assert.Equal(t, "another.com/test", resp.Body.String())
+	assert.Equal(t, "miss", resp.Header().Get("X-Cache"))
+
+	resp = doReq("https://another.com/test")
+	assert.Equal(t, "another.com/test", resp.Body.String())
 	assert.Equal(t, "hit", resp.Header().Get("X-Cache"))
 }
 
