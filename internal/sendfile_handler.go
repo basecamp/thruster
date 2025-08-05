@@ -79,6 +79,13 @@ func (w *sendfileWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return hijacker.Hijack()
 }
 
+func (w *sendfileWriter) Flush() {
+	flusher, ok := w.w.(http.Flusher)
+	if ok {
+		flusher.Flush()
+	}
+}
+
 func (w *sendfileWriter) sendingFilename() string {
 	return w.w.Header().Get("X-Sendfile")
 }
