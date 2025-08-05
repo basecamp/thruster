@@ -1,3 +1,10 @@
+## v0.1.15 / 2025-08-05
+
+* Ensure responses are flushable (preventing issues with SSE) (#87)
+* Add host to cache key (#86)
+* Add X-Request-Start header (#85)
+* Add `LOG_REQUESTS` option to control request logging (#50)
+
 ## v0.1.14 / 2025-06-18
 
 * Build with Go 1.24.4 (#81)
