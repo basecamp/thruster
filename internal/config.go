@@ -33,6 +33,8 @@ const (
 	defaultHttpReadTimeout  = 30 * time.Second
 	defaultHttpWriteTimeout = 30 * time.Second
 
+	defaultH2CEnabled = false
+
 	defaultLogLevel    = slog.LevelInfo
 	defaultLogRequests = true
 )
@@ -60,6 +62,8 @@ type Config struct {
 	HttpIdleTimeout  time.Duration
 	HttpReadTimeout  time.Duration
 	HttpWriteTimeout time.Duration
+
+	H2CEnabled bool
 
 	ForwardHeaders bool
 
@@ -100,6 +104,8 @@ func NewConfig() (*Config, error) {
 		HttpIdleTimeout:  getEnvDuration("HTTP_IDLE_TIMEOUT", defaultHttpIdleTimeout),
 		HttpReadTimeout:  getEnvDuration("HTTP_READ_TIMEOUT", defaultHttpReadTimeout),
 		HttpWriteTimeout: getEnvDuration("HTTP_WRITE_TIMEOUT", defaultHttpWriteTimeout),
+
+		H2CEnabled: getEnvBool("H2C_ENABLED", defaultH2CEnabled),
 
 		LogLevel:    logLevel,
 		LogRequests: getEnvBool("LOG_REQUESTS", defaultLogRequests),

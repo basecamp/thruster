@@ -102,11 +102,23 @@ func (s *Server) externalAccountBinding() *acme.ExternalAccountBinding {
 }
 
 func (s *Server) defaultHttpServer(addr string) *http.Server {
+	protocols := new(http.Protocols)
+	protocols.SetHTTP1(true)
+	protocols.SetHTTP2(true)
+
+	if s.config.H2CEnabled {
+		slog.Debug("Enabling h2c")
+
+		// Enable h2c support
+		protocols.SetUnencryptedHTTP2(true)
+	}
+
 	return &http.Server{
 		Addr:         addr,
 		IdleTimeout:  s.config.HttpIdleTimeout,
 		ReadTimeout:  s.config.HttpReadTimeout,
 		WriteTimeout: s.config.HttpWriteTimeout,
+		Protocols:    protocols,
 	}
 }
 

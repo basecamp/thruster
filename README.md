@@ -88,6 +88,7 @@ environment variables that you can set.
 | `HTTP_IDLE_TIMEOUT`         | The maximum time in seconds that a client can be idle before the connection is closed. | 60 |
 | `HTTP_READ_TIMEOUT`         | The maximum time in seconds that a client can take to send the request headers and body. | 30 |
 | `HTTP_WRITE_TIMEOUT`        | The maximum time in seconds during which the client must read the response. | 30 |
+| `H2C_ENABLED`               | Set to `1` or `true` to enable h2c (http/2 cleartext) | Disabled |
 | `ACME_DIRECTORY`            | The URL of the ACME directory to use for TLS certificate provisioning. | `https://acme-v02.api.letsencrypt.org/directory` (Let's Encrypt production) |
 | `EAB_KID`                   | The EAB key identifier to use when provisioning TLS certificates, if required. | None |
 | `EAB_HMAC_KEY`              | The Base64-encoded EAB HMAC key to use when provisioning TLS certificates, if required. | None |

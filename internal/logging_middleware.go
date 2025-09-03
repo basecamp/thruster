@@ -49,7 +49,8 @@ func (h *LoggingMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"remote_addr", remoteAddr,
 		"user_agent", userAgent,
 		"cache", cache,
-		"query", r.URL.RawQuery)
+		"query", r.URL.RawQuery,
+		"proto", r.Proto)
 }
 
 type responseWriter struct {
