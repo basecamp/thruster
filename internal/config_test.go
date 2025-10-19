@@ -105,6 +105,7 @@ func TestConfig_defaults(t *testing.T) {
 	assert.Equal(t, "echo", c.UpstreamCommand)
 	assert.Equal(t, defaultCacheSize, c.CacheSizeBytes)
 	assert.Equal(t, slog.LevelInfo, c.LogLevel)
+	assert.Equal(t, false, c.H2CEnabled)
 }
 
 func TestConfig_override_defaults_with_env_vars(t *testing.T) {
@@ -117,6 +118,7 @@ func TestConfig_override_defaults_with_env_vars(t *testing.T) {
 	usingEnvVar(t, "DEBUG", "1")
 	usingEnvVar(t, "ACME_DIRECTORY", "https://acme-staging-v02.api.letsencrypt.org/directory")
 	usingEnvVar(t, "LOG_REQUESTS", "false")
+	usingEnvVar(t, "H2C_ENABLED", "true")
 
 	c, err := NewConfig()
 	require.NoError(t, err)
@@ -129,6 +131,7 @@ func TestConfig_override_defaults_with_env_vars(t *testing.T) {
 	assert.Equal(t, slog.LevelDebug, c.LogLevel)
 	assert.Equal(t, "https://acme-staging-v02.api.letsencrypt.org/directory", c.ACMEDirectoryURL)
 	assert.Equal(t, false, c.LogRequests)
+	assert.Equal(t, true, c.H2CEnabled)
 }
 
 func TestConfig_override_defaults_with_env_vars_using_prefix(t *testing.T) {
@@ -139,6 +142,7 @@ func TestConfig_override_defaults_with_env_vars_using_prefix(t *testing.T) {
 	usingEnvVar(t, "THRUSTER_X_SENDFILE_ENABLED", "0")
 	usingEnvVar(t, "THRUSTER_DEBUG", "1")
 	usingEnvVar(t, "THRUSTER_LOG_REQUESTS", "0")
+	usingEnvVar(t, "THRUSTER_H2C_ENABLED", "1")
 
 	c, err := NewConfig()
 	require.NoError(t, err)
@@ -149,6 +153,7 @@ func TestConfig_override_defaults_with_env_vars_using_prefix(t *testing.T) {
 	assert.Equal(t, false, c.XSendfileEnabled)
 	assert.Equal(t, slog.LevelDebug, c.LogLevel)
 	assert.Equal(t, false, c.LogRequests)
+	assert.Equal(t, true, c.H2CEnabled)
 }
 
 func TestConfig_prefixed_variables_take_precedence_over_non_prefixed(t *testing.T) {
