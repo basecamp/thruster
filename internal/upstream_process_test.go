@@ -27,7 +27,7 @@ func TestUpstreamProcess(t *testing.T) {
 		}()
 
 		<-p.Started
-		p.Signal(syscall.SIGTERM)
+		assert.NoError(t, p.Signal(syscall.SIGTERM))
 
 		assert.NoError(t, err)
 		assert.Equal(t, 0, exitCode)

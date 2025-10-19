@@ -39,7 +39,7 @@ func ProxyErrorHandler(badGatewayPage string) func(w http.ResponseWriter, r *htt
 		if content != nil {
 			w.Header().Set("Content-Type", "text/html")
 			w.WriteHeader(http.StatusBadGateway)
-			w.Write(content)
+			_, _ = w.Write(content)
 		} else {
 			w.WriteHeader(http.StatusBadGateway)
 		}

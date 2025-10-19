@@ -14,7 +14,7 @@ func TestSendfileHandler(t *testing.T) {
 		assert.Equal(t, "X-Sendfile", r.Header.Get("X-Sendfile-Type"))
 
 		w.Header().Set("X-Sendfile", fixturePath("image.jpg"))
-		w.Write([]byte("This body should not be seen"))
+		_, _ = w.Write([]byte("This body should not be seen"))
 	}
 
 	h := NewSendfileHandler(true, http.HandlerFunc(upstream))
@@ -57,7 +57,7 @@ func TestSendFileHandler_when_no_x_sendfile_present(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/custom")
 		w.WriteHeader(http.StatusTeapot)
-		w.Write([]byte("This body should be seen"))
+		_, _ = w.Write([]byte("This body should be seen"))
 	}
 
 	h := NewSendfileHandler(true, http.HandlerFunc(upstream))
@@ -78,7 +78,7 @@ func TestSendFileHandler_when_not_enabled(t *testing.T) {
 		w.Header().Set("Content-Type", "application/custom")
 		w.Header().Set("X-Sendfile", fixturePath("image.jpg"))
 		w.WriteHeader(http.StatusTeapot)
-		w.Write([]byte("This body should be seen"))
+		_, _ = w.Write([]byte("This body should be seen"))
 	}
 
 	h := NewSendfileHandler(false, http.HandlerFunc(upstream))

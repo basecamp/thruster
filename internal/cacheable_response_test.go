@@ -77,7 +77,7 @@ func TestCacheableResponse_does_not_cache_items_where_body_too_large(t *testing.
 	rec := httptest.NewRecorder()
 	cr := NewCacheableResponse(rec, 10)
 	cr.Header().Set("Cache-Control", "public, max-age=60")
-	cr.Write([]byte("12345678901234567890"))
+	_, _ = cr.Write([]byte("12345678901234567890"))
 
 	cacheable, _ := cr.CacheStatus()
 	assert.False(t, cacheable)
@@ -98,7 +98,7 @@ func TestCacheableResponse_writes_response_to_writer(t *testing.T) {
 	cr := NewCacheableResponse(w, 1024)
 	cr.Header().Set("Cache-Control", "public, max-age=60")
 	cr.WriteHeader(http.StatusCreated)
-	cr.Write([]byte("Hello World"))
+	_, _ = cr.Write([]byte("Hello World"))
 
 	assert.Equal(t, http.StatusCreated, w.Code)
 	assert.Equal(t, "Hello World", w.Body.String())
@@ -111,7 +111,7 @@ func TestCacheableResponse_writes_response_to_writer_even_when_too_large_to_cach
 	cr := NewCacheableResponse(w, 10)
 	cr.Header().Set("Cache-Control", "public, max-age=60")
 	cr.WriteHeader(http.StatusCreated)
-	cr.Write([]byte("12345678901234567890"))
+	_, _ = cr.Write([]byte("12345678901234567890"))
 
 	assert.Equal(t, http.StatusCreated, w.Code)
 	assert.Equal(t, "12345678901234567890", w.Body.String())
@@ -124,9 +124,9 @@ func TestCacheableResponse_write_cached_response(t *testing.T) {
 	cr := NewCacheableResponse(rec, 1024)
 	cr.Header().Set("Cache-Control", "public, max-age=60")
 	cr.WriteHeader(http.StatusCreated)
-	cr.Write([]byte("Hello World"))
+	_, _ = cr.Write([]byte("Hello World"))
 
-	cr.ToBuffer() // Ensure the body is saved
+	_, _ = cr.ToBuffer() // Ensure the body is saved
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -145,9 +145,9 @@ func TestCacheableResponse_conditional_response(t *testing.T) {
 	cr := NewCacheableResponse(rec, 1024)
 	cr.Header().Set("Etag", etag)
 	cr.WriteHeader(http.StatusOK)
-	cr.Write([]byte("Hello World"))
+	_, _ = cr.Write([]byte("Hello World"))
 
-	cr.ToBuffer() // Ensure the body is saved
+	_, _ = cr.ToBuffer() // Ensure the body is saved
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -175,9 +175,9 @@ func TestCacheableResponse_conditional_response_none_match(t *testing.T) {
 	cr := NewCacheableResponse(rec, 1024)
 	cr.Header().Set("Etag", "ffffffff")
 	cr.WriteHeader(http.StatusOK)
-	cr.Write([]byte("Hello World"))
+	_, _ = cr.Write([]byte("Hello World"))
 
-	cr.ToBuffer() // Ensure the body is saved
+	_, _ = cr.ToBuffer() // Ensure the body is saved
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -195,9 +195,9 @@ func TestCacheableResponse_conditional_response_no_etag_in_request(t *testing.T)
 	cr := NewCacheableResponse(rec, 1024)
 	cr.Header().Set("Etag", "ffffffff")
 	cr.WriteHeader(http.StatusOK)
-	cr.Write([]byte("Hello World"))
+	_, _ = cr.Write([]byte("Hello World"))
 
-	cr.ToBuffer() // Ensure the body is saved
+	_, _ = cr.ToBuffer() // Ensure the body is saved
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -213,9 +213,9 @@ func TestCacheableResponse_conditional_response_no_etag_in_response(t *testing.T
 	rec := httptest.NewRecorder()
 	cr := NewCacheableResponse(rec, 1024)
 	cr.WriteHeader(http.StatusOK)
-	cr.Write([]byte("Hello World"))
+	_, _ = cr.Write([]byte("Hello World"))
 
-	cr.ToBuffer() // Ensure the body is saved
+	_, _ = cr.ToBuffer() // Ensure the body is saved
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -264,7 +264,7 @@ func TestCacheableResponse_serialization(t *testing.T) {
 	cr := NewCacheableResponse(rec, 1024)
 	cr.Header().Set("Cache-Control", "public, max-age=60")
 	cr.WriteHeader(http.StatusCreated)
-	cr.Write([]byte("Hello World"))
+	_, _ = cr.Write([]byte("Hello World"))
 
 	saved, err := cr.ToBuffer()
 	assert.NoError(t, err)
@@ -307,7 +307,7 @@ func TestStashingWriter_writing_over_limit_in_small_pieces(t *testing.T) {
 	writer := &bytes.Buffer{}
 	sw := NewStashingWriter(10, writer)
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		written, err := sw.Write([]byte("12"))
 		require.NoError(t, err)
 		assert.Equal(t, 2, written)

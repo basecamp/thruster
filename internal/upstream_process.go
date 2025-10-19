@@ -54,5 +54,5 @@ func (p *UpstreamProcess) handleSignals() {
 
 	sig := <-ch
 	slog.Info("Relaying signal to upstream process", "signal", sig.String())
-	p.Signal(sig)
+	_ = p.Signal(sig)
 }

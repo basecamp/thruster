@@ -17,11 +17,19 @@ jobs:
       with:
         go-version-file: go.mod
 
+    - name: Install golangci-lint
+      uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9
+      with:
+        version: latest
+
     - name: Install dependencies
       run: go mod download
 
     - name: Build
-      run: go build -v ./...
+      run: make build
 
     - name: Test
-      run: go test -v ./...
+      run: make test
+
+    - name: Lint
+      run: make lint
