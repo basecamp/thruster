@@ -27,7 +27,7 @@ func NewServer(config *Config, handler http.Handler) *Server {
 	}
 }
 
-func (s *Server) Start() {
+func (s *Server) Start() error {
 	httpAddress := fmt.Sprintf(":%d", s.config.HttpPort)
 	httpsAddress := fmt.Sprintf(":%d", s.config.HttpsPort)
 
@@ -41,18 +41,38 @@ func (s *Server) Start() {
 		s.httpsServer.TLSConfig = manager.TLSConfig()
 		s.httpsServer.Handler = s.handler
 
-		go s.httpServer.ListenAndServe()
-		go s.httpsServer.ListenAndServeTLS("", "")
+		httpListener, err := net.Listen("tcp", httpAddress)
+		if err != nil {
+			slog.Error("Failed to start HTTP listener", "error", err)
+			return err
+		}
+
+		httpsListener, err := net.Listen("tcp", httpsAddress)
+		if err != nil {
+			slog.Error("Failed to start HTTPS listener", "error", err)
+			return err
+		}
+
+		go s.httpServer.Serve(httpListener)
+		go s.httpsServer.ServeTLS(httpsListener, "", "")
 
 		slog.Info("Server started", "http", httpAddress, "https", httpsAddress, "tls_domain", s.config.TLSDomains)
+		return nil
 	} else {
 		s.httpsServer = nil
 		s.httpServer = s.defaultHttpServer(httpAddress)
 		s.httpServer.Handler = s.handler
 
-		go s.httpServer.ListenAndServe()
+		httpListener, err := net.Listen("tcp", httpAddress)
+		if err != nil {
+			slog.Error("Failed to start HTTP listener", "error", err)
+			return err
+		}
+
+		go s.httpServer.Serve(httpListener)
 
 		slog.Info("Server started", "http", httpAddress)
+		return nil
 	}
 }
 

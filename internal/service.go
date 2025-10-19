@@ -34,7 +34,9 @@ func (s *Service) Run() int {
 	server := NewServer(s.config, handler)
 	upstream := NewUpstreamProcess(s.config.UpstreamCommand, s.config.UpstreamArgs...)
 
-	server.Start()
+	if err := server.Start(); err != nil {
+		return 1
+	}
 	defer server.Stop()
 
 	s.setEnvironment()
