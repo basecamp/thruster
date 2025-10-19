@@ -108,7 +108,7 @@ func TestCacheHandler_keying(t *testing.T) {
 			cache := newTestCache()
 			handler := NewCacheHandler(cache, 1024, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Cache-Control", "public, max-age=60")
-				w.Write([]byte("Hello"))
+				_, _ = w.Write([]byte("Hello"))
 			}))
 
 			hits := []string{}
@@ -133,7 +133,7 @@ func TestCacheHandler_vary_header(t *testing.T) {
 		w.Header().Set("Vary", "Accept")
 		w.Header().Set("Cache-Control", "public, max-age=600")
 		w.Header().Set("Content-Type", contentType)
-		w.Write([]byte(contentType))
+		_, _ = w.Write([]byte(contentType))
 	}))
 
 	doReq := func(accept string, other string) *httptest.ResponseRecorder {
@@ -171,7 +171,7 @@ func TestCacheHandler_different_hosts(t *testing.T) {
 	handler := NewCacheHandler(cache, 1024, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		host := r.Header.Get("Host")
 		w.Header().Set("Cache-Control", "public, max-age=600")
-		w.Write([]byte(host))
+		_, _ = w.Write([]byte(host))
 	}))
 
 	doReq := func(url string) *httptest.ResponseRecorder {
@@ -246,10 +246,10 @@ func BenchmarkCacheHandler_retrieving(b *testing.B) {
 
 	handler := NewCacheHandler(cache, 1024, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "public, max-age=600")
-		w.Write([]byte("Hello"))
+		_, _ = w.Write([]byte("Hello"))
 	}))
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("GET", "/", nil)
 		handler.ServeHTTP(w, r)

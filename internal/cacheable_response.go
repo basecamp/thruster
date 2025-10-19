@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"io"
+	"log/slog"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -122,7 +123,10 @@ func (c *CacheableResponse) WriteCachedResponse(w http.ResponseWriter, r *http.R
 		c.copyHeaders(w, true, http.StatusNotModified)
 	} else {
 		c.copyHeaders(w, true, c.StatusCode)
-		io.Copy(w, bytes.NewReader(c.Body))
+		_, err := io.Copy(w, bytes.NewReader(c.Body))
+		if err != nil {
+			slog.Error("Error writing cached response body", "error", err)
+		}
 	}
 }
 
@@ -134,8 +138,8 @@ func (c *CacheableResponse) wasNotModified(r *http.Request) bool {
 		return false
 	}
 
-	ifNoneMatch := strings.Split(r.Header.Get("If-None-Match"), ",")
-	for _, etag := range ifNoneMatch {
+	ifNoneMatch := strings.SplitSeq(r.Header.Get("If-None-Match"), ",")
+	for etag := range ifNoneMatch {
 		if strings.TrimSpace(etag) == requestEtag {
 			return true
 		}

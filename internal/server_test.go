@@ -75,7 +75,7 @@ func makeRoundTripH2cRequest(t *testing.T, h2cEnabled bool) (*http.Response, err
 	server.Handler = h
 	listener, err := net.Listen("tcp", ":0")
 	require.NoError(t, err)
-	go server.Serve(listener)
+	go func() { assert.NoError(t, server.Serve(listener)) }()
 
 	client := http.Client{
 		// Force the http.Client to use an http/2 connection over cleartext.

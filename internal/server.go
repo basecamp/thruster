@@ -53,8 +53,8 @@ func (s *Server) Start() error {
 			return err
 		}
 
-		go s.httpServer.Serve(httpListener)
-		go s.httpsServer.ServeTLS(httpsListener, "", "")
+		go func() { _ = s.httpServer.Serve(httpListener) }()
+		go func() { _ = s.httpsServer.ServeTLS(httpsListener, "", "") }()
 
 		slog.Info("Server started", "http", httpAddress, "https", httpsAddress, "tls_domain", s.config.TLSDomains)
 		return nil
@@ -69,7 +69,7 @@ func (s *Server) Start() error {
 			return err
 		}
 
-		go s.httpServer.Serve(httpListener)
+		go func() { _ = s.httpServer.Serve(httpListener) }()
 
 		slog.Info("Server started", "http", httpAddress)
 		return nil
@@ -83,9 +83,9 @@ func (s *Server) Stop() {
 
 	slog.Info("Server stopping")
 
-	s.httpServer.Shutdown(ctx)
+	_ = s.httpServer.Shutdown(ctx)
 	if s.httpsServer != nil {
-		s.httpsServer.Shutdown(ctx)
+		_ = s.httpsServer.Shutdown(ctx)
 	}
 }
 

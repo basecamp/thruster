@@ -15,7 +15,7 @@ import (
 func TestHandlerGzipCompression_when_proxying(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Length", strconv.FormatInt(fixtureLength("loremipsum.txt"), 10))
-		w.Write(fixtureContent("loremipsum.txt"))
+		_, _ = w.Write(fixtureContent("loremipsum.txt"))
 	}))
 	defer upstream.Close()
 
@@ -39,7 +39,7 @@ func TestNotHandlerGzipCompression_when_disabled(t *testing.T) {
 
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Length", fixtureLength)
-		w.Write(fixtureContent("loremipsum.txt"))
+		_, _ = w.Write(fixtureContent("loremipsum.txt"))
 	}))
 	defer upstream.Close()
 
@@ -63,7 +63,7 @@ func TestHandlerGzipCompression_is_not_applied_when_not_requested(t *testing.T) 
 
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Length", fixtureLength)
-		w.Write(fixtureContent("loremipsum.txt"))
+		_, _ = w.Write(fixtureContent("loremipsum.txt"))
 	}))
 	defer upstream.Close()
 
@@ -85,7 +85,7 @@ func TestHandlerGzipCompression_does_not_compress_images(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/jpg")
 		w.Header().Set("Content-Length", fixtureLength)
-		w.Write(fixtureContent("image.jpg"))
+		_, _ = w.Write(fixtureContent("image.jpg"))
 	}))
 	defer upstream.Close()
 
