@@ -1,3 +1,9 @@
+## v0.1.16 / 2025-10-19
+
+* Build with Go 1.25 (#93)
+* Fail with an error if unable to bind to port (#92)
+* Add H2C support behind H2C_ENABLED flag (#89)
+
 ## v0.1.15 / 2025-08-05
 
 * Ensure responses are flushable (preventing issues with SSE) (#87)
