@@ -32,4 +32,20 @@ func TestUpstreamProcess(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, 0, exitCode)
 	})
+
+	t.Run("return 0 exit code and error when command fails to start", func(t *testing.T) {
+		p := NewUpstreamProcess("this-is-definitely-missing")
+		exitCode, err := p.Run()
+
+		assert.Error(t, err)
+		assert.Equal(t, 0, exitCode)
+	})
+
+	t.Run("return 0 exit code when command doesn't error", func(t *testing.T) {
+		p := NewUpstreamProcess("true")
+		exitCode, err := p.Run()
+
+		assert.NoError(t, err)
+		assert.Equal(t, 0, exitCode)
+	})
 }
