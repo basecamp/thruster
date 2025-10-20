@@ -87,6 +87,11 @@ environment variables that you can set.
 | `BAD_GATEWAY_PAGE`          | Path to an HTML file to serve when the backend server returns a 502 Bad Gateway error. If there is no file at the specific path, Thruster will serve an empty 502 response instead. Because Thruster boots very quickly, a custom page can be a useful way to show that your application is starting up. | `./public/502.html` |
 | `HTTP_PORT`                 | The port to listen on for HTTP traffic. | 80 |
 | `HTTPS_PORT`                | The port to listen on for HTTPS traffic. | 443 |
+| `HTTP_HEALTH_PATH`          | The http health path to check before start port listening. | None |
+| `HTTP_HEALTH_HOST`          | The http health host to check before start port listening. | 127.0.0.1 |
+| `HTTP_HEALTH_INTERVAL`      | The http health path check interval (seconds). | 1 |
+| `HTTP_HEALTH_TIMEOUT`       | The http health path check timeout (seconds). | 1 |
+| `HTTP_HEALTH_DEADLINE`      | The http health path deadline interval (seconds), after which thruster will exit with error, if no success response. | 120 |
 | `HTTP_IDLE_TIMEOUT`         | The maximum time in seconds that a client can be idle before the connection is closed. | 60 |
 | `HTTP_READ_TIMEOUT`         | The maximum time in seconds that a client can take to send the request headers and body. | 30 |
 | `HTTP_WRITE_TIMEOUT`        | The maximum time in seconds during which the client must read the response. | 30 |
