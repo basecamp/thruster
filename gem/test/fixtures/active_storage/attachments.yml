@@ -1,0 +1,9 @@
+thruster_png:
+  name: media
+  record: thruster (Gallery)
+  blob: thruster_png
+
+thruster_mp4:
+  name: media
+  record: thruster (Gallery)
+  blob: thruster_mp4

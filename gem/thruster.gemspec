@@ -15,7 +15,9 @@ Gem::Specification.new do |s|
     "rubygems_mfa_required" => "true"
   }
 
-  s.files = Dir[ "{lib}/**/*", "MIT-LICENSE", "README.md" ]
+  s.files = Dir[ "{lib,app,config}/**/*", "MIT-LICENSE", "README.md" ]
   s.bindir = "exe"
   s.executables << "thrust"
+
+  s.add_development_dependency "rails", ">= 8.0"
 end

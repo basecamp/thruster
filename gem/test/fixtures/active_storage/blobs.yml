@@ -1,0 +1,19 @@
+thruster_png:
+  key: <%= ActiveStorage::Blob.generate_unique_secure_token %>
+  filename: thruster.png
+  content_type: image/png
+  metadata: '{"identified":true,"width":1024,"height":1024,"analyzed":true}'
+  service_name: test
+  byte_size: 2267587
+  checksum: <%= Digest::MD5.file(Rails.root.join("../../test/fixtures/files/thruster.png")).base64digest %>
+  created_at: <%= Time.now %>
+
+thruster_mp4:
+  key: <%= ActiveStorage::Blob.generate_unique_secure_token %>
+  filename: thruster.mp4
+  content_type: video/mp4
+  metadata: '{"identified":true,"width":560,"height":560,"duration":6.041667,"analyzed":true}'
+  service_name: test
+  byte_size: 1655431
+  checksum: <%= Digest::MD5.file(Rails.root.join("../../test/fixtures/files/thruster.mp4")).base64digest %>
+  created_at: <%= Time.now %>

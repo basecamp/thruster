@@ -1,10 +1,10 @@
 require "rubygems/package_task"
 
 NATIVE_PLATFORMS = {
-  "arm64-darwin" => "dist/thrust-darwin-arm64",
-  "x86_64-darwin" => "dist/thrust-darwin-amd64",
-  "x86_64-linux" => "dist/thrust-linux-amd64",
-  "aarch64-linux" => "dist/thrust-linux-arm64",
+  "arm64-darwin" => "../dist/thrust-darwin-arm64",
+  "x86_64-darwin" => "../dist/thrust-darwin-amd64",
+  "x86_64-linux" => "../dist/thrust-linux-amd64",
+  "aarch64-linux" => "../dist/thrust-linux-arm64",
 }
 
 BASE_GEMSPEC = Bundler.load_gemspec("thruster.gemspec")

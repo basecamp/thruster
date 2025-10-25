@@ -1,6 +1,8 @@
 package internal
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -9,12 +11,22 @@ import (
 
 type Service struct {
 	config *Config
+	Secret string
 }
 
 func NewService(config *Config) *Service {
 	return &Service{
 		config: config,
+		Secret: generateSecret(),
 	}
+}
+
+func generateSecret() string {
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		panic(err)
+	}
+	return base64.URLEncoding.EncodeToString(bytes)
 }
 
 func (s *Service) Run() int {
@@ -64,4 +76,5 @@ func (s *Service) targetUrl() *url.URL {
 func (s *Service) setEnvironment() {
 	// Set PORT to be inherited by the upstream process.
 	os.Setenv("PORT", fmt.Sprintf("%d", s.config.TargetPort))
+	os.Setenv("THRUSTER_SECRET", s.Secret)
 }
