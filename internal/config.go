@@ -29,6 +29,7 @@ const (
 
 	defaultHttpPort           = 80
 	defaultHttpsPort          = 443
+	defaultHttpHealthHost     = "127.0.0.1"
 	defaultHttpHealthTimeout  = 1 * time.Second
 	defaultHttpHealthInterval = 1 * time.Second
 	defaultHttpHealthDeadline = 2 * time.Minute
@@ -109,7 +110,7 @@ func NewConfig() (*Config, error) {
 
 		HttpPort:           getEnvInt("HTTP_PORT", defaultHttpPort),
 		HttpsPort:          getEnvInt("HTTPS_PORT", defaultHttpsPort),
-		HttpHealthHost:     getEnvString("HTTP_HEALTH_HOST", "127.0.0.1"),
+		HttpHealthHost:     getEnvString("HTTP_HEALTH_HOST", defaultHttpHealthHost),
 		HttpHealthPath:     getEnvString("HTTP_HEALTH_PATH", ""),
 		HttpHealthInterval: getEnvDuration("HTTP_HEALTH_INTERVAL", defaultHttpHealthInterval),
 		HttpHealthTimeout:  getEnvDuration("HTTP_HEALTH_TIMEOUT", defaultHttpHealthTimeout),
