@@ -9,21 +9,28 @@ import (
 )
 
 type HandlerOptions struct {
-	badGatewayPage           string
-	cache                    Cache
-	maxCacheableResponseBody int
-	maxRequestBody           int
-	targetUrl                *url.URL
-	xSendfileEnabled         bool
-	gzipCompressionEnabled   bool
-	forwardHeaders           bool
-	logRequests              bool
+	badGatewayPage                  string
+	cache                           Cache
+	maxCacheableResponseBody        int
+	maxRequestBody                  int
+	targetUrl                       *url.URL
+	xSendfileEnabled                bool
+	gzipCompressionEnabled          bool
+	activeStorageIntegrationEnabled bool
+	secret                          string
+	forwardHeaders                  bool
+	logRequests                     bool
 }
 
 func NewHandler(options HandlerOptions) http.Handler {
 	handler := NewProxyHandler(options.targetUrl, options.badGatewayPage, options.forwardHeaders)
 	handler = NewCacheHandler(options.cache, options.maxCacheableResponseBody, handler)
 	handler = NewSendfileHandler(options.xSendfileEnabled, handler)
+
+	if options.activeStorageIntegrationEnabled {
+		handler = NewActiveStorageHandler(options.secret, handler)
+	}
+
 	handler = NewRequestStartMiddleware(handler)
 
 	if options.gzipCompressionEnabled {

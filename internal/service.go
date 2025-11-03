@@ -31,15 +31,17 @@ func generateSecret() string {
 
 func (s *Service) Run() int {
 	handlerOptions := HandlerOptions{
-		cache:                    s.cache(),
-		targetUrl:                s.targetUrl(),
-		xSendfileEnabled:         s.config.XSendfileEnabled,
-		gzipCompressionEnabled:   s.config.GzipCompressionEnabled,
-		maxCacheableResponseBody: s.config.MaxCacheItemSizeBytes,
-		maxRequestBody:           s.config.MaxRequestBody,
-		badGatewayPage:           s.config.BadGatewayPage,
-		forwardHeaders:           s.config.ForwardHeaders,
-		logRequests:              s.config.LogRequests,
+		secret:                          s.Secret,
+		cache:                           s.cache(),
+		targetUrl:                       s.targetUrl(),
+		xSendfileEnabled:                s.config.XSendfileEnabled,
+		gzipCompressionEnabled:          s.config.GzipCompressionEnabled,
+		activeStorageIntegrationEnabled: s.config.ActiveStorageIntegrationEnabled,
+		maxCacheableResponseBody:        s.config.MaxCacheItemSizeBytes,
+		maxRequestBody:                  s.config.MaxRequestBody,
+		badGatewayPage:                  s.config.BadGatewayPage,
+		forwardHeaders:                  s.config.ForwardHeaders,
+		logRequests:                     s.config.LogRequests,
 	}
 
 	handler := NewHandler(handlerOptions)
