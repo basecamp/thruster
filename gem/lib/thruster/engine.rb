@@ -1,4 +1,5 @@
 require "active_storage"
+require "thruster/active_storage/representation"
 
 module Thruster
   class Engine < ::Rails::Engine

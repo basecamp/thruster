@@ -1,0 +1,101 @@
+<style>
+  .galleries-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+  }
+
+  .gallery-card {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .gallery-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+
+  .gallery-card a {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .gallery-thumbnail {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    background: #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+  }
+
+  .gallery-info {
+    padding: 15px;
+  }
+
+  .gallery-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  .gallery-count {
+    color: #666;
+    font-size: 14px;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+  }
+
+  .page-header {
+    margin-bottom: 30px;
+  }
+
+  .page-header h2 {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+</style>
+
+<div class="page-header">
+  <h2>Galleries</h2>
+  <p><%= @galleries.count %> <%= "gallery".pluralize(@galleries.count) %></p>
+</div>
+
+<% if @galleries.any? %>
+  <div class="galleries-grid">
+    <% @galleries.each do |gallery| %>
+      <div class="gallery-card">
+        <%= link_to gallery_path(gallery) do %>
+          <% if gallery.media.attached? && gallery.media.first %>
+            <%= image_tag gallery.media.first.send(gallery.media.first.image? ? :variant : :preview, resize_to_limit: [300, 200]), class: "gallery-thumbnail", alt: gallery.name %>
+          <% else %>
+            <div class="gallery-thumbnail">No files</div>
+          <% end %>
+
+          <div class="gallery-info">
+            <div class="gallery-title"><%= gallery.name %></div>
+            <div class="gallery-count">
+              <%= gallery.media.count %> <%= "file".pluralize(gallery.media.count) %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+<% else %>
+  <div class="empty-state">
+    <h3>No galleries yet</h3>
+    <p>Create a gallery in the Rails console to get started.</p>
+  </div>
+<% end %>

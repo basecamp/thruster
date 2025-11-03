@@ -27,21 +27,18 @@ class ActiveStorageIntrospectionControllerTest < ActionDispatch::IntegrationTest
 
     data = response.parsed_body
 
-    assert_equal attachment.key, data["blob"]["key"]
-    assert_equal attachment.filename, data["blob"]["filename"]
-    assert_equal attachment.content_type, data["blob"]["content_type"]
-    assert_equal attachment.metadata.as_json, data["blob"]["metadata"]
-    assert_equal attachment.byte_size, data["blob"]["byte_size"]
-    assert_equal attachment.checksum, data["blob"]["checksum"]
+    assert_equal attachment.key, data["key"]
+    assert_equal attachment.filename, data["filename"]
+    assert_equal attachment.content_type, data["content_type"]
+    assert_equal attachment.metadata.as_json, data["metadata"]
+    assert_equal attachment.byte_size, data["byte_size"]
+    assert_equal attachment.checksum, data["checksum"]
 
     assert_nil data["variation"]
-
-    assert_equal "Disk", data["service"]["type"]
-    assert data["service"]["config"].present?
   end
 
   test "returns metadata for a given variant" do
-    variant = active_storage_attachments(:thruster_png).variant(resize_to_limit: [128, 128])
+    variant = active_storage_attachments(:thruster_png).variant(resize_to_limit: [ 128, 128 ])
     blob = variant.blob
     variation = variant.variation
 
@@ -52,22 +49,19 @@ class ActiveStorageIntrospectionControllerTest < ActionDispatch::IntegrationTest
 
     data = response.parsed_body
 
-    assert_equal blob.key, data["blob"]["key"]
-    assert_equal blob.filename, data["blob"]["filename"]
-    assert_equal blob.content_type, data["blob"]["content_type"]
-    assert_equal blob.metadata.as_json, data["blob"]["metadata"]
-    assert_equal blob.byte_size, data["blob"]["byte_size"]
-    assert_equal blob.checksum, data["blob"]["checksum"]
+    assert_equal blob.key, data["key"]
+    assert_equal blob.filename, data["filename"]
+    assert_equal blob.content_type, data["content_type"]
+    assert_equal blob.metadata.as_json, data["metadata"]
+    assert_equal blob.byte_size, data["byte_size"]
+    assert_equal blob.checksum, data["checksum"]
 
     assert_equal "png", data["variation"]["transformations"]["format"]
-    assert_equal [128, 128], data["variation"]["transformations"]["resize_to_limit"]
-
-    assert_equal "Disk", data["service"]["type"]
-    assert data["service"]["config"].present?
+    assert_equal [ 128, 128 ], data["variation"]["transformations"]["resize_to_limit"]
   end
 
   test "returns metadata for a given preview" do
-    variant = active_storage_attachments(:thruster_mp4).preview(format: :webp, resize_to_limit: [128, 128])
+    variant = active_storage_attachments(:thruster_mp4).preview(format: :webp, resize_to_limit: [ 128, 128 ])
     blob = variant.blob
     variation = variant.variation
 
@@ -79,7 +73,7 @@ class ActiveStorageIntrospectionControllerTest < ActionDispatch::IntegrationTest
     data = response.parsed_body
 
     assert_equal "webp", data["variation"]["transformations"]["format"]
-    assert_equal [128, 128], data["variation"]["transformations"]["resize_to_limit"]
+    assert_equal [ 128, 128 ], data["variation"]["transformations"]["resize_to_limit"]
   end
 
   private

@@ -1,0 +1,106 @@
+<style>
+  .gallery-header {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  .gallery-header h2 {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+
+  .gallery-meta {
+    color: #666;
+    font-size: 14px;
+  }
+
+  .back-link {
+    display: inline-block;
+    margin-bottom: 15px;
+    color: #0066cc;
+    text-decoration: none;
+  }
+
+  .back-link:hover {
+    text-decoration: underline;
+  }
+
+  .images-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+  }
+
+  .image-card {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+  }
+
+  .image-card:hover {
+    transform: scale(1.02);
+  }
+
+  .image-card img {
+    width: 100%;
+    height: 250px;
+    object-fit: cover;
+    display: block;
+  }
+
+  .image-info {
+    padding: 12px;
+    font-size: 13px;
+    color: #666;
+    border-top: 1px solid #eee;
+  }
+
+  .image-filename {
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 4px;
+    word-break: break-all;
+  }
+
+  .image-size {
+    font-size: 12px;
+  }
+
+  .empty-gallery {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 8px;
+    color: #666;
+  }
+</style>
+
+<div class="gallery-header">
+  <%= link_to "← Back to galleries", root_path, class: "back-link" %>
+
+  <h2><%= @gallery.name %></h2>
+  <div class="gallery-meta">
+    <%= @gallery.media.count %> <%= "image".pluralize(@gallery.media.count) %>
+  </div>
+</div>
+
+<div class="images-grid">
+  <% @gallery.media.each do |image| %>
+    <div class="image-card">
+      <%= image_tag image.send(image.image? ? :variant : :preview, resize_to_limit: [500, 500]), alt: image.filename %>
+
+      <div class="image-info">
+        <div class="image-filename"><%= image.filename %></div>
+        <div class="image-size">
+          <%= number_to_human_size(image.byte_size) %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>
