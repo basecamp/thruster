@@ -19,13 +19,18 @@ const (
 )
 
 type Representation struct {
+	Transformations *map[string]interface{} `json:"transformations"`
+	Preview         *PreviewParams `json:"preview"`
 	Filename        string                 `json:"filename"`
 	ContentType     string                 `json:"content_type"`
 	ByteSize        int64                  `json:"byte_size"`
 	Checksum        string                 `json:"checksum"`
 	DownloadURL     string                 `json:"download_url"`
-	Transformations map[string]interface{} `json:"transformations"`
-	Preview         map[string]interface{} `json:"preview"`
+}
+
+type PreviewParams struct {
+	Command   string   `json:"command"`
+	Arguments []string `json:"arguments"`
 }
 
 type ProcessedRepresentation struct {
