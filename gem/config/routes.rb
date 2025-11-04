@@ -1,9 +1,11 @@
 Rails.application.routes.draw do
-  namespace :thruster do
-    namespace :active_storage do
-      get "inspect/:id",
-        to: "inspections#show",
-        as: :inspection
+  direct :thruster_active_storage do |model, options|
+    representation = Thruster::ActiveStorage::Representation.new(model, **options)
+
+    if representation.performs_transformations?
+      representation.to_url
+    else
+      route_for(:rails_storage_proxy, model, options)
     end
   end
 end
