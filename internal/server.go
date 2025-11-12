@@ -2,26 +2,11 @@ package internal
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
-	"os"
 	"time"
-
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/tls"
-	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/pem"
-	"errors"
-	"math/big"
-
-	"golang.org/x/crypto/acme"
-	"golang.org/x/crypto/acme/autocert"
-	"golang.org/x/net/idna"
 )
 
 type Server struct {
@@ -42,20 +27,13 @@ func (s *Server) Start() error {
 	httpAddress := fmt.Sprintf(":%d", s.config.HttpPort)
 	httpsAddress := fmt.Sprintf(":%d", s.config.HttpsPort)
 
-	if s.config.HasTLS() {
-		manager := s.certManager()
-
+	tlsProvider := s.tlsProvider()
+	if tlsProvider != nil {
 		s.httpServer = s.defaultHttpServer(httpAddress)
-		s.httpServer.Handler = manager.HTTPHandler(http.HandlerFunc(httpRedirectHandler))
+		s.httpServer.Handler = tlsProvider.HTTPHandler(http.HandlerFunc(httpRedirectHandler))
 
 		s.httpsServer = s.defaultHttpServer(httpsAddress)
-
-		if s.config.TLSLocal {
-			s.httpsServer.TLSConfig = s.localTLSConfig()
-		} else {
-			s.httpsServer.TLSConfig = manager.TLSConfig()
-		}
-
+		s.httpsServer.TLSConfig = tlsProvider.TLSConfig()
 		s.httpsServer.Handler = s.handler
 
 		httpListener, err := net.Listen("tcp", httpAddress)
@@ -106,191 +84,20 @@ func (s *Server) Stop() {
 	}
 }
 
-func (s *Server) certManager() *autocert.Manager {
-	client := &acme.Client{DirectoryURL: s.config.ACMEDirectoryURL}
-	binding := s.externalAccountBinding()
-
-	slog.Debug("TLS: initializing", "directory", client.DirectoryURL, "using_eab", binding != nil)
-
-	return &autocert.Manager{
-		Cache:                  autocert.DirCache(s.config.StoragePath),
-		Client:                 client,
-		ExternalAccountBinding: binding,
-		HostPolicy:             autocert.HostWhitelist(s.config.TLSDomains...),
-		Prompt:                 autocert.AcceptTOS,
-	}
-}
-
-func (s *Server) localTLSConfig() *tls.Config {
-	return &tls.Config{
-		GetCertificate: s.getLocalCertificate,
-		NextProtos: []string{
-			"h2", "http/1.1", // enable HTTP/2
-		},
-	}
-}
-
-func (s *Server) getLocalCertificate(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	name := hello.ServerName
-	if name == "" {
-		return nil, errors.New("thruster_local_tls: missing server name")
-	}
-
-	name, err := idna.Lookup.ToASCII(name)
-	if err != nil {
-		return nil, errors.New("thruster/local_tls: server name contains invalid character")
-	}
-
-	keyUsage := x509.KeyUsageDigitalSignature
-	keyUsage |= x509.KeyUsageKeyEncipherment
-
-	serialNumber, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
-	if err != nil {
-		return nil, err
-	}
-
-	template := x509.Certificate{
-		SerialNumber: serialNumber,
-		Subject: pkix.Name{
-			Organization: []string{"Thruster Local"},
-		},
-		NotBefore:             time.Now(),
-		NotAfter:              time.Now().Add(365 * 10 * 24 * time.Hour),
-		KeyUsage:              keyUsage,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		BasicConstraintsValid: true,
-	}
-
-	if ip := net.ParseIP(name); ip != nil {
-		template.IPAddresses = append(template.IPAddresses, ip)
-	} else {
-		template.DNSNames = append(template.DNSNames, name)
-	}
-
-	authority, err := s.getLocalAuthority()
-	if err != nil {
-		return nil, err
-	}
-
-	priv, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		return nil, err
-	}
-
-	authcert, err := x509.ParseCertificate(authority.Certificate[0])
-	if err != nil {
-		return nil, err
-	}
-
-	derBytes, err := x509.CreateCertificate(rand.Reader, &template, authcert, &priv.PublicKey, authority.PrivateKey)
-	if err != nil {
-		return nil, err
-	}
-
-	cert := &tls.Certificate{
-		Certificate: [][]byte{authority.Certificate[0], derBytes},
-		PrivateKey:  authority.PrivateKey,
-	}
-
-	return cert, nil
-}
-
-func (s *Server) getLocalAuthority() (*tls.Certificate, error) {
-
-	cert, err := tls.LoadX509KeyPair(fmt.Sprintf("%s/authority.crt", s.config.StoragePath), fmt.Sprintf("%s/authority.pem", s.config.StoragePath))
-	if err == nil {
-		return &cert, nil
-	}
-
-	err = os.MkdirAll(s.config.StoragePath, 0750)
-
-	keyUsage := x509.KeyUsageDigitalSignature
-	keyUsage |= x509.KeyUsageKeyEncipherment
-	keyUsage |= x509.KeyUsageCertSign
-
-	serialNumber, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
-	if err != nil {
-		return nil, err
-	}
-
-	template := x509.Certificate{
-		SerialNumber: serialNumber,
-		Subject: pkix.Name{
-			Organization: []string{"Thruster Local CA"},
-		},
-		NotBefore:             time.Now(),
-		NotAfter:              time.Now().Add(365 * 10 * 24 * time.Hour),
-		KeyUsage:              keyUsage,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		BasicConstraintsValid: true,
-		IsCA:                  true,
-	}
-
-	priv, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		return nil, err
-	}
-
-	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
-	if err != nil {
-		return nil, err
-	}
-
-	certOut, err := os.Create(fmt.Sprintf("%s/authority.crt", s.config.StoragePath))
-	if err != nil {
-		return nil, err
-	}
-
-	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
-		return nil, err
-	}
-
-	if err := certOut.Close(); err != nil {
-		return nil, err
-	}
-
-	keyOut, err := os.Create(fmt.Sprintf("%s/authority.pem", s.config.StoragePath))
-	if err != nil {
-		return nil, err
-	}
-
-	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if err := pem.Encode(keyOut, &pem.Block{Type: "PRIVATE KEY", Bytes: privBytes}); err != nil {
-		return nil, err
-	}
-
-	if err := keyOut.Close(); err != nil {
-		return nil, err
-	}
-
-	cer := tls.Certificate{
-		Certificate: [][]byte{derBytes},
-		PrivateKey:  priv,
-	}
-
-	return &cer, nil
-}
-
-func (s *Server) externalAccountBinding() *acme.ExternalAccountBinding {
-	if s.config.EAB_KID == "" || s.config.EAB_HMACKey == "" {
+func (s *Server) tlsProvider() TLSProvider {
+	if !s.config.HasTLS() {
 		return nil
 	}
-
-	key, err := base64.RawURLEncoding.DecodeString(s.config.EAB_HMACKey)
-	if err != nil {
-		slog.Error("Error decoding EAB_HMACKey", "error", err)
-		return nil
+	if s.config.TLSLocal {
+		return NewLocalTLSProvider(s.config.StoragePath)
 	}
-
-	return &acme.ExternalAccountBinding{
-		KID: s.config.EAB_KID,
-		Key: key,
-	}
+	return NewAutocertTLSProvider(
+		s.config.StoragePath,
+		s.config.TLSDomains,
+		s.config.ACMEDirectoryURL,
+		s.config.EAB_KID,
+		s.config.EAB_HMACKey,
+	)
 }
 
 func (s *Server) defaultHttpServer(addr string) *http.Server {

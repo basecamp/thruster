@@ -93,6 +93,20 @@ func TestConfig_tls(t *testing.T) {
 		assert.False(t, c.HasTLS())
 		assert.False(t, c.ForwardHeaders)
 	})
+
+	t.Run("with TLS_LOCAL", func(t *testing.T) {
+		usingProgramArgs(t, "thruster", "echo", "hello")
+		usingEnvVar(t, "TLS_DOMAIN", "")
+		usingEnvVar(t, "TLS_LOCAL", "true")
+
+		c, err := NewConfig()
+		require.NoError(t, err)
+
+		assert.Equal(t, []string{}, c.TLSDomains)
+		assert.True(t, c.HasTLS())
+		assert.False(t, c.ForwardHeaders)
+		assert.True(t, c.TLSLocal)
+	})
 }
 
 func TestConfig_defaults(t *testing.T) {
@@ -106,6 +120,7 @@ func TestConfig_defaults(t *testing.T) {
 	assert.Equal(t, defaultCacheSize, c.CacheSizeBytes)
 	assert.Equal(t, slog.LevelInfo, c.LogLevel)
 	assert.Equal(t, false, c.H2CEnabled)
+	assert.Equal(t, false, c.TLSLocal)
 }
 
 func TestConfig_override_defaults_with_env_vars(t *testing.T) {
@@ -119,6 +134,7 @@ func TestConfig_override_defaults_with_env_vars(t *testing.T) {
 	usingEnvVar(t, "ACME_DIRECTORY", "https://acme-staging-v02.api.letsencrypt.org/directory")
 	usingEnvVar(t, "LOG_REQUESTS", "false")
 	usingEnvVar(t, "H2C_ENABLED", "true")
+	usingEnvVar(t, "TLS_LOCAL", "true")
 
 	c, err := NewConfig()
 	require.NoError(t, err)
@@ -132,6 +148,7 @@ func TestConfig_override_defaults_with_env_vars(t *testing.T) {
 	assert.Equal(t, "https://acme-staging-v02.api.letsencrypt.org/directory", c.ACMEDirectoryURL)
 	assert.Equal(t, false, c.LogRequests)
 	assert.Equal(t, true, c.H2CEnabled)
+	assert.Equal(t, true, c.TLSLocal)
 }
 
 func TestConfig_override_defaults_with_env_vars_using_prefix(t *testing.T) {
@@ -143,6 +160,7 @@ func TestConfig_override_defaults_with_env_vars_using_prefix(t *testing.T) {
 	usingEnvVar(t, "THRUSTER_DEBUG", "1")
 	usingEnvVar(t, "THRUSTER_LOG_REQUESTS", "0")
 	usingEnvVar(t, "THRUSTER_H2C_ENABLED", "1")
+	usingEnvVar(t, "THRUSTER_TLS_LOCAL", "1")
 
 	c, err := NewConfig()
 	require.NoError(t, err)
@@ -154,6 +172,7 @@ func TestConfig_override_defaults_with_env_vars_using_prefix(t *testing.T) {
 	assert.Equal(t, slog.LevelDebug, c.LogLevel)
 	assert.Equal(t, false, c.LogRequests)
 	assert.Equal(t, true, c.H2CEnabled)
+	assert.Equal(t, true, c.TLSLocal)
 }
 
 func TestConfig_prefixed_variables_take_precedence_over_non_prefixed(t *testing.T) {
