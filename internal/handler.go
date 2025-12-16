@@ -26,7 +26,7 @@ func NewHandler(options HandlerOptions) http.Handler {
 	handler := NewProxyHandler(options.targetUrl, options.badGatewayPage, options.forwardHeaders)
 	handler = NewCacheHandler(options.cache, options.maxCacheableResponseBody, handler)
 	handler = NewSendfileHandler(options.xSendfileEnabled, handler)
-	handler = NewRequestStartMiddleware(handler)
+	handler = NewRequestStartHandler(handler)
 
 	if options.gzipCompressionEnabled {
 		var wrapper func(http.Handler) http.HandlerFunc
@@ -54,7 +54,7 @@ func NewHandler(options HandlerOptions) http.Handler {
 		gzipHandler := wrapper(handler)
 
 		if options.gzipCompressionDisableOnAuth {
-			handler = NewCompressionGuardMiddleware(gzipHandler)
+			handler = NewCompressionGuardHandler(gzipHandler)
 		} else {
 			handler = gzipHandler
 		}
@@ -65,7 +65,7 @@ func NewHandler(options HandlerOptions) http.Handler {
 	}
 
 	if options.logRequests {
-		handler = NewLoggingMiddleware(slog.Default(), handler)
+		handler = NewLoggingHandler(slog.Default(), handler)
 	}
 
 	return handler

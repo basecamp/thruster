@@ -9,7 +9,7 @@ import (
 	"github.com/klauspost/compress/gzhttp"
 )
 
-func NewCompressionGuardMiddleware(next http.Handler) http.Handler {
+func NewCompressionGuardHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check for user-specific headers in the request
 		if hasUserSpecificRequestHeaders(r) {

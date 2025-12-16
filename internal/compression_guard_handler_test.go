@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCompressionGuardMiddleware(t *testing.T) {
+func TestCompressionGuardHandler(t *testing.T) {
 	tests := []struct {
 		name           string
 		requestHeaders map[string]string
@@ -85,7 +85,7 @@ func TestCompressionGuardMiddleware(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			handler := NewCompressionGuardMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			handler := NewCompressionGuardHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				for k, v := range tt.responseHeader {
 					w.Header().Set(k, v)
 				}

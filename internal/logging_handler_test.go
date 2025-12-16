@@ -14,10 +14,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMiddleware_LoggingMiddleware(t *testing.T) {
+func TestLoggingHandler(t *testing.T) {
 	out := &strings.Builder{}
 	logger := slog.New(slog.NewJSONHandler(out, nil))
-	middleware := NewLoggingMiddleware(logger, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := NewLoggingHandler(logger, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Cache", "miss")
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusCreated)
@@ -29,7 +29,7 @@ func TestMiddleware_LoggingMiddleware(t *testing.T) {
 	req.Header.Set("User-Agent", "Robot/1")
 	req.Header.Set("Content-Type", "application/json")
 
-	middleware.ServeHTTP(httptest.NewRecorder(), req)
+	handler.ServeHTTP(httptest.NewRecorder(), req)
 
 	logline := struct {
 		Path              string `json:"path"`
