@@ -1,4 +1,4 @@
-## v0.1.17 / unreleased
+## v0.1.17 / 2025-12-16
 
 * Mitigate BREACH attacks with random jitter and optional compression guard (#102)
 
