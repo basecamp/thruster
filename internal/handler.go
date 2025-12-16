@@ -9,15 +9,17 @@ import (
 )
 
 type HandlerOptions struct {
-	badGatewayPage           string
-	cache                    Cache
-	maxCacheableResponseBody int
-	maxRequestBody           int
-	targetUrl                *url.URL
-	xSendfileEnabled         bool
-	gzipCompressionEnabled   bool
-	forwardHeaders           bool
-	logRequests              bool
+	badGatewayPage               string
+	cache                        Cache
+	maxCacheableResponseBody     int
+	maxRequestBody               int
+	targetUrl                    *url.URL
+	xSendfileEnabled             bool
+	gzipCompressionEnabled       bool
+	gzipCompressionDisableOnAuth bool
+	gzipCompressionJitter        int
+	forwardHeaders               bool
+	logRequests                  bool
 }
 
 func NewHandler(options HandlerOptions) http.Handler {
@@ -27,7 +29,35 @@ func NewHandler(options HandlerOptions) http.Handler {
 	handler = NewRequestStartMiddleware(handler)
 
 	if options.gzipCompressionEnabled {
-		handler = gzhttp.GzipHandler(handler)
+		var wrapper func(http.Handler) http.HandlerFunc
+		var err error
+
+		if options.gzipCompressionJitter > 0 {
+			wrapper, err = gzhttp.NewWrapper(
+				gzhttp.MinSize(1024),
+				gzhttp.CompressionLevel(6),
+				gzhttp.RandomJitter(options.gzipCompressionJitter, 0, false),
+			)
+		} else {
+			wrapper, err = gzhttp.NewWrapper(
+				gzhttp.MinSize(1024),
+				gzhttp.CompressionLevel(6),
+			)
+		}
+
+		if err != nil {
+			// If we cannot create the wrapper with the requested configuration (including jitter),
+			// we must fail hard rather than silently downgrading security or performance.
+			panic("failed to create gzip wrapper: " + err.Error())
+		}
+
+		gzipHandler := wrapper(handler)
+
+		if options.gzipCompressionDisableOnAuth {
+			handler = NewCompressionGuardMiddleware(gzipHandler)
+		} else {
+			handler = gzipHandler
+		}
 	}
 
 	if options.maxRequestBody > 0 {

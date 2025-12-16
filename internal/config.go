@@ -37,6 +37,9 @@ const (
 
 	defaultLogLevel    = slog.LevelInfo
 	defaultLogRequests = true
+
+	defaultGzipCompressionDisableOnAuth = false
+	defaultGzipCompressionJitter        = 32
 )
 
 type Config struct {
@@ -44,11 +47,13 @@ type Config struct {
 	UpstreamCommand string
 	UpstreamArgs    []string
 
-	CacheSizeBytes         int
-	MaxCacheItemSizeBytes  int
-	XSendfileEnabled       bool
-	GzipCompressionEnabled bool
-	MaxRequestBody         int
+	CacheSizeBytes               int
+	MaxCacheItemSizeBytes        int
+	XSendfileEnabled             bool
+	GzipCompressionEnabled       bool
+	GzipCompressionDisableOnAuth bool
+	GzipCompressionJitter        int
+	MaxRequestBody               int
 
 	TLSDomains       []string
 	ACMEDirectoryURL string
@@ -86,11 +91,13 @@ func NewConfig() (*Config, error) {
 		UpstreamCommand: os.Args[1],
 		UpstreamArgs:    os.Args[2:],
 
-		CacheSizeBytes:         getEnvInt("CACHE_SIZE", defaultCacheSize),
-		MaxCacheItemSizeBytes:  getEnvInt("MAX_CACHE_ITEM_SIZE", defaultMaxCacheItemSizeBytes),
-		XSendfileEnabled:       getEnvBool("X_SENDFILE_ENABLED", true),
-		GzipCompressionEnabled: getEnvBool("GZIP_COMPRESSION_ENABLED", true),
-		MaxRequestBody:         getEnvInt("MAX_REQUEST_BODY", defaultMaxRequestBody),
+		CacheSizeBytes:               getEnvInt("CACHE_SIZE", defaultCacheSize),
+		MaxCacheItemSizeBytes:        getEnvInt("MAX_CACHE_ITEM_SIZE", defaultMaxCacheItemSizeBytes),
+		XSendfileEnabled:             getEnvBool("X_SENDFILE_ENABLED", true),
+		GzipCompressionEnabled:       getEnvBool("GZIP_COMPRESSION_ENABLED", true),
+		GzipCompressionDisableOnAuth: getEnvBool("GZIP_COMPRESSION_DISABLE_ON_AUTH", defaultGzipCompressionDisableOnAuth),
+		GzipCompressionJitter:        getEnvInt("GZIP_COMPRESSION_JITTER", defaultGzipCompressionJitter),
+		MaxRequestBody:               getEnvInt("MAX_REQUEST_BODY", defaultMaxRequestBody),
 
 		TLSDomains:       getEnvStrings("TLS_DOMAIN", []string{}),
 		ACMEDirectoryURL: getEnvString("ACME_DIRECTORY", defaultACMEDirectoryURL),
