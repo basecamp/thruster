@@ -9,19 +9,19 @@ import (
 	"time"
 )
 
-type LoggingMiddleware struct {
+type LoggingHandler struct {
 	logger *slog.Logger
 	next   http.Handler
 }
 
-func NewLoggingMiddleware(logger *slog.Logger, next http.Handler) *LoggingMiddleware {
-	return &LoggingMiddleware{
+func NewLoggingHandler(logger *slog.Logger, next http.Handler) *LoggingHandler {
+	return &LoggingHandler{
 		logger: logger,
 		next:   next,
 	}
 }
 
-func (h *LoggingMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *LoggingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	writer := newResponseWriter(w)
 
 	started := time.Now()

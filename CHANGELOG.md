@@ -1,3 +1,7 @@
+## v0.1.17 / 2025-12-16
+
+* Mitigate BREACH attacks with random jitter and optional compression guard (#102)
+
 ## v0.1.16 / 2025-10-19
 
 * Build with Go 1.25 (#93)
