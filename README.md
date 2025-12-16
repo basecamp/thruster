@@ -78,7 +78,7 @@ environment variables that you can set.
 | `TARGET_PORT`               | The port that your Puma server should run on. Thruster will set `PORT` to this value when starting your server. | 3000 |
 | `CACHE_SIZE`                | The size of the HTTP cache in bytes. | 64MB |
 | `MAX_CACHE_ITEM_SIZE`       | The maximum size of a single item in the HTTP cache in bytes. | 1MB |
-| `GZIP_COMPRESSION_ENABLED`  | Whether to enable gzip compression for static assets. Set to `0` or `false` to disable. | Enabled |
+| `GZIP_COMPRESSION_ENABLED`  | Whether to enable gzip compression for responses. Set to `0` or `false` to disable. | Enabled |
 | `X_SENDFILE_ENABLED`        | Whether to enable X-Sendfile support. Set to `0` or `false` to disable. | Enabled |
 | `MAX_REQUEST_BODY`          | The maximum size of a request body in bytes. Requests larger than this size will be refused; `0` means no maximum size is enforced. | `0` |
 | `STORAGE_PATH`              | The path to store Thruster's internal state. Provisioned TLS certificates will be stored here, so that they will not need to be requested every time your application is started. | `./storage/thruster` |
