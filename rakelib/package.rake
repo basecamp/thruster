@@ -5,6 +5,8 @@ NATIVE_PLATFORMS = {
   "x86_64-darwin" => "dist/thrust-darwin-amd64",
   "x86_64-linux" => "dist/thrust-linux-amd64",
   "aarch64-linux" => "dist/thrust-linux-arm64",
+  "x86_64-freebsd" => "dist/thrust-freebsd-amd64",
+  "aarch64-freebsd" => "dist/thrust-freebsd-arm64",
 }
 
 BASE_GEMSPEC = Bundler.load_gemspec("thruster.gemspec")
