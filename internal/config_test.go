@@ -135,6 +135,8 @@ func TestConfig_override_defaults_with_env_vars(t *testing.T) {
 	usingEnvVar(t, "LOG_REQUESTS", "false")
 	usingEnvVar(t, "H2C_ENABLED", "true")
 	usingEnvVar(t, "TLS_LOCAL", "true")
+	usingEnvVar(t, "GZIP_COMPRESSION_DISABLE_ON_AUTH", "true")
+	usingEnvVar(t, "GZIP_COMPRESSION_JITTER", "64")
 
 	c, err := NewConfig()
 	require.NoError(t, err)
@@ -149,6 +151,8 @@ func TestConfig_override_defaults_with_env_vars(t *testing.T) {
 	assert.Equal(t, false, c.LogRequests)
 	assert.Equal(t, true, c.H2CEnabled)
 	assert.Equal(t, true, c.TLSLocal)
+	assert.Equal(t, true, c.GzipCompressionDisableOnAuth)
+	assert.Equal(t, 64, c.GzipCompressionJitter)
 }
 
 func TestConfig_override_defaults_with_env_vars_using_prefix(t *testing.T) {

@@ -10,18 +10,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRequestStartMiddleware(t *testing.T) {
+func TestRequestStartHandler(t *testing.T) {
 	var capturedHeader string
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		capturedHeader = r.Header.Get("X-Request-Start")
 	})
 
-	middleware := NewRequestStartMiddleware(nextHandler)
+	handler := NewRequestStartHandler(nextHandler)
 
 	before := time.Now().UnixMilli()
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
-	middleware.ServeHTTP(w, req)
+	handler.ServeHTTP(w, req)
 	after := time.Now().UnixMilli()
 
 	assert.NotEmpty(t, capturedHeader)
@@ -34,19 +34,19 @@ func TestRequestStartMiddleware(t *testing.T) {
 	assert.LessOrEqual(t, timestamp, after)
 }
 
-func TestRequestStartMiddlewareDoesNotOverwriteExistingHeader(t *testing.T) {
+func TestRequestStartHandlerDoesNotOverwriteExistingHeader(t *testing.T) {
 	existingHeader := "t=1234567890"
 	var capturedHeader string
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		capturedHeader = r.Header.Get("X-Request-Start")
 	})
 
-	middleware := NewRequestStartMiddleware(nextHandler)
+	handler := NewRequestStartHandler(nextHandler)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Set("X-Request-Start", existingHeader)
 	w := httptest.NewRecorder()
-	middleware.ServeHTTP(w, req)
+	handler.ServeHTTP(w, req)
 
 	assert.Equal(t, existingHeader, capturedHeader)
 }

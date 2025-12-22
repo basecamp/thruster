@@ -44,7 +44,7 @@ The comlete steps for releasing a new version are:
 - Update the version & changelog:
   - [ ] update `lib/thruster/version.rb`
   - [ ] update `CHANGELOG.md`
-  - [ ] commit and create a git tag
+  - [ ] commit and create a git tag (prefix the version with `v`, e.g. `v0.1.0`)
 
 - Build the native gems:
   - [ ] `rake clobber` (to clean up any old packages)
