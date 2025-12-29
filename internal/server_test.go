@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -45,6 +46,9 @@ func TestServerEnabledH2CWhenConfigProvided(t *testing.T) {
 func TestServerCanMakeAnEndToEndH2CRequestWhenEnabled(t *testing.T) {
 	resp, err := makeRoundTripH2cRequest(t, true)
 	require.NoError(t, err)
+
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
 
 	assert.Equal(t, "HTTP/2.0", resp.Proto)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
