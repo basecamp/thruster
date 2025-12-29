@@ -45,12 +45,10 @@ func TestServerEnabledH2CWhenConfigProvided(t *testing.T) {
 
 func TestServerCanMakeAnEndToEndH2CRequestWhenEnabled(t *testing.T) {
 	resp, err := makeRoundTripH2cRequest(t, true)
-	t.Cleanup(func() {
-		resp.Body.Close()
-	})
-	_, _ = io.Copy(io.Discard, resp.Body)
-
 	require.NoError(t, err)
+
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
 
 	assert.Equal(t, "HTTP/2.0", resp.Proto)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
