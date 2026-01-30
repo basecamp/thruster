@@ -36,12 +36,7 @@ func (p *UpstreamProcess) Run() (int, error) {
 	go p.handleSignals()
 	err = p.cmd.Wait()
 
-	var exitErr *exec.ExitError
-	if errors.As(err, &exitErr) {
-		return exitErr.ExitCode(), nil
-	}
-
-	return 0, err
+	return p.handleExitCode(err)
 }
 
 func (p *UpstreamProcess) Signal(sig os.Signal) error {
@@ -55,4 +50,18 @@ func (p *UpstreamProcess) handleSignals() {
 	sig := <-ch
 	slog.Info("Relaying signal to upstream process", "signal", sig.String())
 	_ = p.Signal(sig)
+}
+
+func (p *UpstreamProcess) handleExitCode(err error) (int, error) {
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
+			if status.Signaled() {
+				return 128 + int(status.Signal()), nil
+			}
+		}
+		return exitErr.ExitCode(), nil
+	}
+
+	return 0, err
 }
