@@ -1,3 +1,8 @@
+## v0.1.18 / 2026-02-02
+
+* Return correct exit code when terminated with signal (#110)
+* Build with Go 1.25.6
+
 ## v0.1.17 / 2025-12-16
 
 * Mitigate BREACH attacks with random jitter and optional compression guard (#102)
