@@ -108,6 +108,32 @@ Thruster's environment variables can optionally be prefixed with `THRUSTER_`.
 For example, `TLS_DOMAIN` can also be written as `THRUSTER_TLS_DOMAIN`. Whenever
 a prefixed variable is set, it will take precedence over the unprefixed version.
 
+### HTTP_HEALTH_PATH and rails
+
+When using `HTTP_HEALTH_PATH` for health check, this endpoint should work over HTTP protocol and return 200 status code. In rails you can add in `config/routes.rb` such route:
+
+```ruby
+get '/health', to: 'rails/health#show', as: :rails_health_check
+```
+
+and add in `config/application.rb` such settings for hosts checks:
+
+```ruby
+config.host_authorization = {
+  exclude: ->(request) { request.path == '/health' }
+}
+```
+
+If your environment have `config.assume_ssl = true` (not handle http to https redirects), in this case you done. But if you doing http to https redirects on rails side (like need on heroku router), you need also add in `config/application.rb` such settings:
+
+```ruby
+config.ssl_options = {
+  redirect: {
+    exclude: ->(request) { request.path == '/health' }
+  }
+}
+```
+
 ## Security
 
 ### BREACH Mitigation
