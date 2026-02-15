@@ -60,7 +60,7 @@ func hasUserSpecificResponseHeaders(h http.Header) bool {
 	}
 
 	cacheControl := strings.ToLower(h.Get("Cache-Control"))
-	for _, directive := range strings.Split(cacheControl, ",") {
+	for directive := range strings.SplitSeq(cacheControl, ",") {
 		dir := strings.TrimSpace(directive)
 		// Strip any value (e.g. private="Set-Cookie") before comparison.
 		dirName := strings.SplitN(dir, "=", 2)[0]
@@ -70,7 +70,7 @@ func hasUserSpecificResponseHeaders(h http.Header) bool {
 	}
 
 	vary := h.Get("Vary")
-	for _, token := range strings.Split(vary, ",") {
+	for token := range strings.SplitSeq(vary, ",") {
 		if strings.EqualFold(strings.TrimSpace(token), "cookie") {
 			return true
 		}

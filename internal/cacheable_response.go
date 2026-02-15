@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"io"
 	"log/slog"
+	"maps"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -149,9 +150,7 @@ func (c *CacheableResponse) wasNotModified(r *http.Request) bool {
 }
 
 func (c *CacheableResponse) copyHeaders(w http.ResponseWriter, wasHit bool, statusCode int) {
-	for k, v := range c.HttpHeader {
-		w.Header()[k] = v
-	}
+	maps.Copy(w.Header(), c.HttpHeader)
 
 	if wasHit {
 		w.Header().Set("X-Cache", "hit")

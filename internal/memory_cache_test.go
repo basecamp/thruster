@@ -76,7 +76,7 @@ func TestMemoryCache_items_are_evicted_to_make_space(t *testing.T) {
 	maxCacheSize := 10 * KB
 	c := NewMemoryCache(maxCacheSize, 1*KB)
 
-	for i := CacheKey(0); i < 20; i++ {
+	for i := range CacheKey(20) {
 		payload := bytes.Repeat([]byte{byte(i)}, 1*KB)
 		c.Set(i, payload, time.Now().Add(1*time.Hour))
 
