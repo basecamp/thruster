@@ -101,7 +101,7 @@ func (c *MemoryCache) evictOldestItem() {
 	//
 	// If we find an expired item while looking, that's a better choice to evict,
 	// so we can choose it immediately.
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		index := rand.Intn(len(c.keys))
 		key := c.keys[index]
 		v := c.items[key]
