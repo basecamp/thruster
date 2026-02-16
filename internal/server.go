@@ -2,15 +2,11 @@ package internal
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
 	"time"
-
-	"golang.org/x/crypto/acme"
-	"golang.org/x/crypto/acme/autocert"
 )
 
 type Server struct {
@@ -31,14 +27,13 @@ func (s *Server) Start() error {
 	httpAddress := fmt.Sprintf(":%d", s.config.HttpPort)
 	httpsAddress := fmt.Sprintf(":%d", s.config.HttpsPort)
 
-	if s.config.HasTLS() {
-		manager := s.certManager()
-
+	tlsProvider := s.tlsProvider()
+	if tlsProvider != nil {
 		s.httpServer = s.defaultHttpServer(httpAddress)
-		s.httpServer.Handler = manager.HTTPHandler(http.HandlerFunc(httpRedirectHandler))
+		s.httpServer.Handler = tlsProvider.HTTPHandler(http.HandlerFunc(httpRedirectHandler))
 
 		s.httpsServer = s.defaultHttpServer(httpsAddress)
-		s.httpsServer.TLSConfig = manager.TLSConfig()
+		s.httpsServer.TLSConfig = tlsProvider.TLSConfig()
 		s.httpsServer.Handler = s.handler
 
 		httpListener, err := net.Listen("tcp", httpAddress)
@@ -89,36 +84,20 @@ func (s *Server) Stop() {
 	}
 }
 
-func (s *Server) certManager() *autocert.Manager {
-	client := &acme.Client{DirectoryURL: s.config.ACMEDirectoryURL}
-	binding := s.externalAccountBinding()
-
-	slog.Debug("TLS: initializing", "directory", client.DirectoryURL, "using_eab", binding != nil)
-
-	return &autocert.Manager{
-		Cache:                  autocert.DirCache(s.config.StoragePath),
-		Client:                 client,
-		ExternalAccountBinding: binding,
-		HostPolicy:             autocert.HostWhitelist(s.config.TLSDomains...),
-		Prompt:                 autocert.AcceptTOS,
-	}
-}
-
-func (s *Server) externalAccountBinding() *acme.ExternalAccountBinding {
-	if s.config.EAB_KID == "" || s.config.EAB_HMACKey == "" {
+func (s *Server) tlsProvider() TLSProvider {
+	if !s.config.HasTLS() {
 		return nil
 	}
-
-	key, err := base64.RawURLEncoding.DecodeString(s.config.EAB_HMACKey)
-	if err != nil {
-		slog.Error("Error decoding EAB_HMACKey", "error", err)
-		return nil
+	if s.config.TLSLocal {
+		return NewLocalTLSProvider(s.config.StoragePath)
 	}
-
-	return &acme.ExternalAccountBinding{
-		KID: s.config.EAB_KID,
-		Key: key,
-	}
+	return NewAutocertTLSProvider(
+		s.config.StoragePath,
+		s.config.TLSDomains,
+		s.config.ACMEDirectoryURL,
+		s.config.EAB_KID,
+		s.config.EAB_HMACKey,
+	)
 }
 
 func (s *Server) defaultHttpServer(addr string) *http.Server {
