@@ -3,7 +3,7 @@ module github.com/basecamp/thruster
 go 1.26
 
 require (
-	github.com/klauspost/compress v1.18.2
+	github.com/klauspost/compress v1.18.4
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/crypto v0.46.0
 	golang.org/x/net v0.48.0

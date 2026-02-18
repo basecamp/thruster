@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/klauspost/compress/zstd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,7 +22,7 @@ func TestCompressionHandler(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("compresses responses", func(t *testing.T) {
+	t.Run("compresses responses with gzip", func(t *testing.T) {
 		handler := NewCompressionHandler(0, false, upstream)
 
 		req := httptest.NewRequest("GET", "/", nil)
@@ -38,6 +39,37 @@ func TestCompressionHandler(t *testing.T) {
 		body, err := io.ReadAll(reader)
 		require.NoError(t, err)
 		assert.Equal(t, largeBody, string(body))
+	})
+
+	t.Run("compresses responses with zstd", func(t *testing.T) {
+		handler := NewCompressionHandler(0, false, upstream)
+
+		req := httptest.NewRequest("GET", "/", nil)
+		req.Header.Set("Accept-Encoding", "zstd")
+		rr := httptest.NewRecorder()
+
+		handler.ServeHTTP(rr, req)
+
+		assert.Equal(t, "zstd", rr.Header().Get("Content-Encoding"))
+
+		reader, err := zstd.NewReader(rr.Body)
+		require.NoError(t, err)
+		defer reader.Close()
+		body, err := io.ReadAll(reader)
+		require.NoError(t, err)
+		assert.Equal(t, largeBody, string(body))
+	})
+
+	t.Run("prefers zstd when client accepts both", func(t *testing.T) {
+		handler := NewCompressionHandler(0, false, upstream)
+
+		req := httptest.NewRequest("GET", "/", nil)
+		req.Header.Set("Accept-Encoding", "gzip, zstd")
+		rr := httptest.NewRecorder()
+
+		handler.ServeHTTP(rr, req)
+
+		assert.Equal(t, "zstd", rr.Header().Get("Content-Encoding"))
 	})
 
 	t.Run("applies jitter when configured", func(t *testing.T) {
