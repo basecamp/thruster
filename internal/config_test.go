@@ -105,6 +105,11 @@ func TestConfig_defaults(t *testing.T) {
 	assert.Equal(t, "echo", c.UpstreamCommand)
 	assert.Equal(t, defaultCacheSize, c.CacheSizeBytes)
 	assert.Equal(t, slog.LevelInfo, c.LogLevel)
+	assert.Equal(t, "", c.HttpHealthPath)
+	assert.Equal(t, "127.0.0.1", c.HttpHealthHost)
+	assert.Equal(t, 1*time.Second, c.HttpHealthTimeout)
+	assert.Equal(t, 1*time.Second, c.HttpHealthInterval)
+	assert.Equal(t, 2*time.Minute, c.HttpHealthDeadline)
 	assert.Equal(t, false, c.H2CEnabled)
 }
 
@@ -118,6 +123,11 @@ func TestConfig_override_defaults_with_env_vars(t *testing.T) {
 	usingEnvVar(t, "DEBUG", "1")
 	usingEnvVar(t, "ACME_DIRECTORY", "https://acme-staging-v02.api.letsencrypt.org/directory")
 	usingEnvVar(t, "LOG_REQUESTS", "false")
+	usingEnvVar(t, "HTTP_HEALTH_PATH", "/health")
+	usingEnvVar(t, "HTTP_HEALTH_HOST", "localhost")
+	usingEnvVar(t, "HTTP_HEALTH_INTERVAL", "3")
+	usingEnvVar(t, "HTTP_HEALTH_TIMEOUT", "4")
+	usingEnvVar(t, "HTTP_HEALTH_DEADLINE", "60")
 	usingEnvVar(t, "H2C_ENABLED", "true")
 	usingEnvVar(t, "GZIP_COMPRESSION_DISABLE_ON_AUTH", "true")
 	usingEnvVar(t, "GZIP_COMPRESSION_JITTER", "64")
@@ -132,6 +142,11 @@ func TestConfig_override_defaults_with_env_vars(t *testing.T) {
 	assert.Equal(t, false, c.GzipCompressionEnabled)
 	assert.Equal(t, slog.LevelDebug, c.LogLevel)
 	assert.Equal(t, "https://acme-staging-v02.api.letsencrypt.org/directory", c.ACMEDirectoryURL)
+	assert.Equal(t, "/health", c.HttpHealthPath)
+	assert.Equal(t, "localhost", c.HttpHealthHost)
+	assert.Equal(t, 3*time.Second, c.HttpHealthInterval)
+	assert.Equal(t, 4*time.Second, c.HttpHealthTimeout)
+	assert.Equal(t, 60*time.Second, c.HttpHealthDeadline)
 	assert.Equal(t, false, c.LogRequests)
 	assert.Equal(t, true, c.H2CEnabled)
 	assert.Equal(t, true, c.GzipCompressionDisableOnAuth)
@@ -146,6 +161,11 @@ func TestConfig_override_defaults_with_env_vars_using_prefix(t *testing.T) {
 	usingEnvVar(t, "THRUSTER_X_SENDFILE_ENABLED", "0")
 	usingEnvVar(t, "THRUSTER_DEBUG", "1")
 	usingEnvVar(t, "THRUSTER_LOG_REQUESTS", "0")
+	usingEnvVar(t, "THRUSTER_HTTP_HEALTH_PATH", "/health")
+	usingEnvVar(t, "THRUSTER_HTTP_HEALTH_HOST", "localhost")
+	usingEnvVar(t, "THRUSTER_HTTP_HEALTH_INTERVAL", "3")
+	usingEnvVar(t, "THRUSTER_HTTP_HEALTH_TIMEOUT", "4")
+	usingEnvVar(t, "THRUSTER_HTTP_HEALTH_DEADLINE", "60")
 	usingEnvVar(t, "THRUSTER_H2C_ENABLED", "1")
 
 	c, err := NewConfig()
@@ -157,6 +177,11 @@ func TestConfig_override_defaults_with_env_vars_using_prefix(t *testing.T) {
 	assert.Equal(t, false, c.XSendfileEnabled)
 	assert.Equal(t, slog.LevelDebug, c.LogLevel)
 	assert.Equal(t, false, c.LogRequests)
+	assert.Equal(t, "/health", c.HttpHealthPath)
+	assert.Equal(t, "localhost", c.HttpHealthHost)
+	assert.Equal(t, 3*time.Second, c.HttpHealthInterval)
+	assert.Equal(t, 4*time.Second, c.HttpHealthTimeout)
+	assert.Equal(t, 60*time.Second, c.HttpHealthDeadline)
 	assert.Equal(t, true, c.H2CEnabled)
 }
 
@@ -169,6 +194,20 @@ func TestConfig_prefixed_variables_take_precedence_over_non_prefixed(t *testing.
 	require.NoError(t, err)
 
 	assert.Equal(t, 4000, c.TargetPort)
+}
+
+func TestConfig_defaults_are_used_if_strconv_fails(t *testing.T) {
+	usingProgramArgs(t, "thruster", "echo", "hello")
+	usingEnvVar(t, "TARGET_PORT", "should-be-an-int")
+	usingEnvVar(t, "HTTP_IDLE_TIMEOUT", "should-be-a-duration")
+	usingEnvVar(t, "X_SENDFILE_ENABLED", "should-be-a-bool")
+
+	c, err := NewConfig()
+	require.NoError(t, err)
+
+	assert.Equal(t, 3000, c.TargetPort)
+	assert.Equal(t, 60*time.Second, c.HttpIdleTimeout)
+	assert.Equal(t, true, c.XSendfileEnabled)
 }
 
 func TestConfig_return_error_when_no_upstream_command(t *testing.T) {
