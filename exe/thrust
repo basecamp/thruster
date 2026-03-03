@@ -1,11 +1,26 @@
 #! /usr/bin/env ruby
 
 PLATFORM = [ :cpu, :os ].map { |m| Gem::Platform.local.send(m) }.join("-")
-EXECUTABLE = File.expand_path(File.join(__dir__, PLATFORM, "thrust"))
 
-if File.exist?(EXECUTABLE)
-  exec(EXECUTABLE, *ARGV)
+# The binary lives in exe/<platform>/thrust within the platform-specific gem.
+# If Bundler resolved the non-platform gem, look for it in any other installed
+# thruster gem that does have the binary (e.g. a separately-installed platform gem).
+def find_executable(platform)
+  candidates = [ File.expand_path(File.join(__dir__, platform, "thrust")) ]
+
+  Gem::Specification.each do |spec|
+    if spec.name == "thruster"
+      candidates << File.join(spec.gem_dir, "exe", platform, "thrust")
+    end
+  end
+
+  candidates.find { |path| File.exist?(path) }
+end
+
+if executable = find_executable(PLATFORM)
+  exec(executable, *ARGV)
 else
-  STDERR.puts("ERROR: Unsupported platform: #{PLATFORM}")
+  STDERR.puts "ERROR: Thruster binary not found for platform #{PLATFORM}."
+  STDERR.puts "Make sure the platform-specific gem is installed: gem install thruster --platform #{PLATFORM}"
   exit 1
 end
