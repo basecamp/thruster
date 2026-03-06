@@ -1,3 +1,7 @@
+## v0.1.19 / 2026-03-06
+
+* Build with Go 1.26.1
+
 ## v0.1.18 / 2026-02-02
 
 * Return correct exit code when terminated with signal (#110)
