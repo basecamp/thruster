@@ -180,6 +180,41 @@ func TestHandlerMaxRequestBody(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
+func TestHandler_bad_gateway_response(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		panic("backend error")
+	}))
+	defer upstream.Close()
+
+	options := handlerOptions(upstream.URL)
+	h := NewHandler(options)
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("POST", "/", bytes.NewReader([]byte("hello there")))
+	h.ServeHTTP(w, r)
+	assert.Equal(t, http.StatusBadGateway, w.Code)
+	assert.Equal(t, "", w.Header().Get("Content-Type"))
+	assert.Equal(t, "", w.Body.String())
+}
+
+func TestHandler_serve_custom_bad_gateway_page(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		panic("backend error")
+	}))
+	defer upstream.Close()
+
+	options := handlerOptions(upstream.URL)
+	options.badGatewayPage = fixturePath("502.html")
+	h := NewHandler(options)
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("POST", "/", bytes.NewReader([]byte("hello there")))
+	h.ServeHTTP(w, r)
+	assert.Equal(t, http.StatusBadGateway, w.Code)
+	assert.Equal(t, "text/html", w.Header().Get("Content-Type"))
+	assert.Equal(t, string(fixtureContent("502.html")), w.Body.String())
+}
+
 func TestHandlerPreserveInboundHostHeaderWhenProxying(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "example.org", r.Host)
