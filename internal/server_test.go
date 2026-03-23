@@ -57,6 +57,33 @@ func TestServerDefaultCannotMakeH2CRequest(t *testing.T) {
 	assert.Contains(t, err.Error(), "http2: failed reading the frame payload")
 }
 
+func TestServerDefaultHasNoTLSProvider(t *testing.T) {
+	config, err := NewConfig()
+	require.NoError(t, err)
+
+	server := NewServer(config, nil)
+	assert.Nil(t, server.tlsProvider())
+}
+
+func TestServerWithAutocertTLSProvider(t *testing.T) {
+	config, err := NewConfig()
+	require.NoError(t, err)
+
+	config.TLSDomains = []string{"example.com"}
+	server := NewServer(config, nil)
+	assert.NotNil(t, server.tlsProvider())
+}
+
+func TestServerWithLocalTLSProvider(t *testing.T) {
+	config, err := NewConfig()
+	require.NoError(t, err)
+
+	config.TLSDomains = []string{"example.com"}
+	config.TLSLocal = true
+	server := NewServer(config, nil)
+	assert.NotNil(t, server.tlsProvider())
+}
+
 func makeRoundTripH2cRequest(t *testing.T, h2cEnabled bool) (*http.Response, error) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "HTTP/1.1", r.Proto, "The upstream should still be serving http/1.1")
