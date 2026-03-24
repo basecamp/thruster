@@ -11,6 +11,7 @@ import (
 
 	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
+	"golang.org/x/net/idna"
 )
 
 type Server struct {
@@ -35,7 +36,7 @@ func (s *Server) Start() error {
 		manager := s.certManager()
 
 		s.httpServer = s.defaultHttpServer(httpAddress)
-		s.httpServer.Handler = manager.HTTPHandler(http.HandlerFunc(httpRedirectHandler))
+		s.httpServer.Handler = manager.HTTPHandler(httpRedirectHandler(s.config.TLSDomains))
 
 		s.httpsServer = s.defaultHttpServer(httpsAddress)
 		s.httpsServer.TLSConfig = manager.TLSConfig()
@@ -142,14 +143,54 @@ func (s *Server) defaultHttpServer(addr string) *http.Server {
 	}
 }
 
-func httpRedirectHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Connection", "close")
-
-	host, _, err := net.SplitHostPort(r.Host)
-	if err != nil {
-		host = r.Host
+// httpRedirectHandler returns an HTTP handler that redirects allowed hosts to HTTPS.
+// Precondition: tlsDomains must be non-empty. This function is only called inside the
+// HasTLS() branch, which guarantees at least one TLS domain is configured.
+func httpRedirectHandler(tlsDomains []string) http.HandlerFunc {
+	// Normalize configured domains to ASCII (Punycode) for consistent comparison,
+	// matching the normalization that autocert.HostWhitelist applies via idna.Lookup.ToASCII.
+	// Domains that fail normalization are skipped, matching autocert behavior.
+	normalizedDomains := make([]string, 0, len(tlsDomains))
+	for _, d := range tlsDomains {
+		ascii, err := idna.Lookup.ToASCII(d)
+		if err != nil {
+			slog.Warn("Skipping TLS domain that failed IDNA normalization", "domain", d, "error", err)
+			continue
+		}
+		normalizedDomains = append(normalizedDomains, ascii)
 	}
 
-	url := "https://" + host + r.URL.RequestURI()
-	http.Redirect(w, r, url, http.StatusMovedPermanently)
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Connection", "close")
+
+		// Strip port from host. The redirect URL omits the port intentionally
+		// because HTTPS defaults to 443.
+		host, _, err := net.SplitHostPort(r.Host)
+		if err != nil {
+			host = r.Host
+		}
+
+		normalizedHost, err := idna.Lookup.ToASCII(host)
+		if err != nil {
+			slog.Warn("Rejecting request with host that failed IDNA normalization", "host", host, "error", err)
+			http.Error(w, "Misdirected Request", http.StatusMisdirectedRequest)
+			return
+		}
+
+		allowed := false
+		for _, domain := range normalizedDomains {
+			if normalizedHost == domain {
+				allowed = true
+				break
+			}
+		}
+
+		if !allowed {
+			http.Error(w, "Misdirected Request", http.StatusMisdirectedRequest)
+			return
+		}
+
+		url := "https://" + normalizedHost + r.URL.RequestURI()
+		http.Redirect(w, r, url, http.StatusMovedPermanently)
+	}
 }
