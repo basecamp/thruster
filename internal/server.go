@@ -146,6 +146,9 @@ func (s *Server) defaultHttpServer(addr string) *http.Server {
 // httpRedirectHandler returns an HTTP handler that redirects allowed hosts to HTTPS.
 // Precondition: tlsDomains must be non-empty. This function is only called inside the
 // HasTLS() branch, which guarantees at least one TLS domain is configured.
+// If all configured domains fail IDNA normalization, the normalized allowlist will be
+// empty and all requests will receive 421. This is intentional: if no domain can be
+// normalized, no valid certificate can be issued either, so redirecting would be wrong.
 func httpRedirectHandler(tlsDomains []string) http.HandlerFunc {
 	// Normalize configured domains to ASCII (Punycode) for consistent comparison,
 	// matching the normalization that autocert.HostWhitelist applies via idna.Lookup.ToASCII.
@@ -172,7 +175,7 @@ func httpRedirectHandler(tlsDomains []string) http.HandlerFunc {
 
 		normalizedHost, err := idna.Lookup.ToASCII(host)
 		if err != nil {
-			slog.Warn("Rejecting request with host that failed IDNA normalization", "host", host, "error", err)
+			slog.Debug("Rejecting request with host that failed IDNA normalization", "host", host, "error", err)
 			http.Error(w, "Misdirected Request", http.StatusMisdirectedRequest)
 			return
 		}

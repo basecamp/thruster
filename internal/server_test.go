@@ -131,6 +131,7 @@ func TestHttpRedirectHandlerIDNDomain(t *testing.T) {
 		handler.ServeHTTP(recorder, req)
 
 		assert.Equal(t, http.StatusMovedPermanently, recorder.Code)
+		assert.Equal(t, "https://xn--4ca9ar.example.com/", recorder.Header().Get("Location"))
 	})
 
 	t.Run("punycode host matches unicode config", func(t *testing.T) {
@@ -141,6 +142,7 @@ func TestHttpRedirectHandlerIDNDomain(t *testing.T) {
 		handler.ServeHTTP(recorder, req)
 
 		assert.Equal(t, http.StatusMovedPermanently, recorder.Code)
+		assert.Equal(t, "https://xn--4ca9ar.example.com/", recorder.Header().Get("Location"))
 	})
 }
 
