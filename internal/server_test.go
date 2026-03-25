@@ -57,111 +57,6 @@ func TestServerDefaultCannotMakeH2CRequest(t *testing.T) {
 	assert.Contains(t, err.Error(), "http2: failed reading the frame payload")
 }
 
-func TestHttpRedirectHandlerRejectsSpoofedHost(t *testing.T) {
-	req := httptest.NewRequest("GET", "http://evil.example.com/path", nil)
-	req.Host = "evil.example.com"
-	recorder := httptest.NewRecorder()
-
-	handler := httpRedirectHandler([]string{"legit.example.com"})
-	handler.ServeHTTP(recorder, req)
-
-	assert.Equal(t, http.StatusMisdirectedRequest, recorder.Code)
-	assert.Contains(t, recorder.Body.String(), "Misdirected Request")
-	assert.Empty(t, recorder.Header().Get("Location"))
-}
-
-func TestHttpRedirectHandlerAllowedDomainGets301(t *testing.T) {
-	req := httptest.NewRequest("GET", "http://legit.example.com/path?q=1", nil)
-	req.Host = "legit.example.com"
-	recorder := httptest.NewRecorder()
-
-	handler := httpRedirectHandler([]string{"legit.example.com"})
-	handler.ServeHTTP(recorder, req)
-
-	assert.Equal(t, http.StatusMovedPermanently, recorder.Code)
-	assert.Equal(t, "https://legit.example.com/path?q=1", recorder.Header().Get("Location"))
-}
-
-func TestHttpRedirectHandlerAllowedDomainWithPort(t *testing.T) {
-	req := httptest.NewRequest("GET", "http://example.com:9877/path", nil)
-	req.Host = "example.com:9877"
-	recorder := httptest.NewRecorder()
-
-	handler := httpRedirectHandler([]string{"example.com"})
-	handler.ServeHTTP(recorder, req)
-
-	assert.Equal(t, http.StatusMovedPermanently, recorder.Code)
-	assert.Equal(t, "https://example.com/path", recorder.Header().Get("Location"))
-}
-
-func TestHttpRedirectHandlerMultipleTLSDomains(t *testing.T) {
-	req := httptest.NewRequest("GET", "http://second.example.com/", nil)
-	req.Host = "second.example.com"
-	recorder := httptest.NewRecorder()
-
-	handler := httpRedirectHandler([]string{"first.example.com", "second.example.com"})
-	handler.ServeHTTP(recorder, req)
-
-	assert.Equal(t, http.StatusMovedPermanently, recorder.Code)
-	assert.Equal(t, "https://second.example.com/", recorder.Header().Get("Location"))
-}
-
-func TestHttpRedirectHandlerCaseInsensitiveMatch(t *testing.T) {
-	req := httptest.NewRequest("GET", "http://example.com/", nil)
-	req.Host = "example.com"
-	recorder := httptest.NewRecorder()
-
-	handler := httpRedirectHandler([]string{"Example.COM"})
-	handler.ServeHTTP(recorder, req)
-
-	assert.Equal(t, http.StatusMovedPermanently, recorder.Code)
-	assert.Equal(t, "https://example.com/", recorder.Header().Get("Location"))
-}
-
-func TestHttpRedirectHandlerIDNDomain(t *testing.T) {
-	// Configure with a unicode domain; the handler normalizes it to Punycode
-	// for comparison, matching autocert.HostWhitelist behavior.
-	handler := httpRedirectHandler([]string{"\u00fc\u00f6\u00e4.example.com"})
-
-	t.Run("unicode host matches unicode config", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "http://xn--4ca9ar.example.com/", nil)
-		req.Host = "\u00fc\u00f6\u00e4.example.com"
-		recorder := httptest.NewRecorder()
-
-		handler.ServeHTTP(recorder, req)
-
-		assert.Equal(t, http.StatusMovedPermanently, recorder.Code)
-		assert.Equal(t, "https://xn--4ca9ar.example.com/", recorder.Header().Get("Location"))
-	})
-
-	t.Run("punycode host matches unicode config", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "http://xn--4ca9ar.example.com/", nil)
-		req.Host = "xn--4ca9ar.example.com"
-		recorder := httptest.NewRecorder()
-
-		handler.ServeHTTP(recorder, req)
-
-		assert.Equal(t, http.StatusMovedPermanently, recorder.Code)
-		assert.Equal(t, "https://xn--4ca9ar.example.com/", recorder.Header().Get("Location"))
-	})
-}
-
-func TestHttpRedirectHandlerRejectsHostFailingIDNANormalization(t *testing.T) {
-	handler := httpRedirectHandler([]string{"legit.example.com"})
-
-	// A leading hyphen in a label violates IDNA2008 label validation rules,
-	// causing idna.Lookup.ToASCII to return an error.
-	req := httptest.NewRequest("GET", "http://legit.example.com/", nil)
-	req.Host = "-invalid-.example.com"
-	recorder := httptest.NewRecorder()
-
-	handler.ServeHTTP(recorder, req)
-
-	assert.Equal(t, http.StatusMisdirectedRequest, recorder.Code)
-	assert.Contains(t, recorder.Body.String(), "Misdirected Request")
-	assert.Empty(t, recorder.Header().Get("Location"))
-}
-
 func makeRoundTripH2cRequest(t *testing.T, h2cEnabled bool) (*http.Response, error) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "HTTP/1.1", r.Proto, "The upstream should still be serving http/1.1")
@@ -196,4 +91,68 @@ func makeRoundTripH2cRequest(t *testing.T, h2cEnabled bool) (*http.Response, err
 	}
 
 	return client.Get(fmt.Sprintf("http://%s/", listener.Addr()))
+}
+
+func TestHttpRedirect(t *testing.T) {
+	s := &Server{
+		config: &Config{
+			TLSDomains:  []string{"example.com", "café.example.com"},
+			StoragePath: t.TempDir(),
+		},
+	}
+	s.manager = s.certManager()
+
+	redirect := func(url string) *httptest.ResponseRecorder {
+		t.Helper()
+		w := httptest.NewRecorder()
+		s.httpRedirectHandler(w, httptest.NewRequest("GET", url, nil))
+		return w
+	}
+
+	t.Run("disallowed host", func(t *testing.T) {
+		w := redirect("http://evil.com/path")
+
+		assert.Equal(t, http.StatusMisdirectedRequest, w.Code)
+	})
+
+	t.Run("allowed host", func(t *testing.T) {
+		w := redirect("http://example.com/path")
+
+		assert.Equal(t, http.StatusMovedPermanently, w.Code)
+		assert.Equal(t, "https://example.com/path", w.Header().Get("Location"))
+	})
+
+	t.Run("allowed host with explicit port", func(t *testing.T) {
+		w := redirect("http://example.com:80/path")
+
+		assert.Equal(t, http.StatusMovedPermanently, w.Code)
+		assert.Equal(t, "https://example.com/path", w.Header().Get("Location"))
+	})
+
+	t.Run("mixed case allowed host", func(t *testing.T) {
+		w := redirect("http://Example.COM/path")
+
+		assert.Equal(t, http.StatusMovedPermanently, w.Code)
+		assert.Equal(t, "https://example.com/path", w.Header().Get("Location"))
+	})
+
+	t.Run("unicode host", func(t *testing.T) {
+		w := redirect("http://café.example.com/path")
+
+		assert.Equal(t, http.StatusMovedPermanently, w.Code)
+		assert.Equal(t, "https://xn--caf-dma.example.com/path", w.Header().Get("Location"))
+	})
+
+	t.Run("unicode host using punycode", func(t *testing.T) {
+		w := redirect("http://xn--caf-dma.example.com/path")
+
+		assert.Equal(t, http.StatusMovedPermanently, w.Code)
+		assert.Equal(t, "https://xn--caf-dma.example.com/path", w.Header().Get("Location"))
+	})
+
+	t.Run("unicode host using invalid punycode", func(t *testing.T) {
+		w := redirect("http://-xn--caf-dma.example.com/path")
+
+		assert.Equal(t, http.StatusMisdirectedRequest, w.Code)
+	})
 }

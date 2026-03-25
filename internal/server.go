@@ -19,6 +19,7 @@ type Server struct {
 	handler     http.Handler
 	httpServer  *http.Server
 	httpsServer *http.Server
+	manager     *autocert.Manager
 }
 
 func NewServer(config *Config, handler http.Handler) *Server {
@@ -33,13 +34,13 @@ func (s *Server) Start() error {
 	httpsAddress := fmt.Sprintf(":%d", s.config.HttpsPort)
 
 	if s.config.HasTLS() {
-		manager := s.certManager()
+		s.manager = s.certManager()
 
 		s.httpServer = s.defaultHttpServer(httpAddress)
-		s.httpServer.Handler = manager.HTTPHandler(httpRedirectHandler(s.config.TLSDomains))
+		s.httpServer.Handler = s.manager.HTTPHandler(http.HandlerFunc(s.httpRedirectHandler))
 
 		s.httpsServer = s.defaultHttpServer(httpsAddress)
-		s.httpsServer.TLSConfig = manager.TLSConfig()
+		s.httpsServer.TLSConfig = s.manager.TLSConfig()
 		s.httpsServer.Handler = s.handler
 
 		httpListener, err := net.Listen("tcp", httpAddress)
@@ -61,6 +62,7 @@ func (s *Server) Start() error {
 		return nil
 	} else {
 		s.httpsServer = nil
+		s.manager = nil
 		s.httpServer = s.defaultHttpServer(httpAddress)
 		s.httpServer.Handler = s.handler
 
@@ -143,57 +145,24 @@ func (s *Server) defaultHttpServer(addr string) *http.Server {
 	}
 }
 
-// httpRedirectHandler returns an HTTP handler that redirects allowed hosts to HTTPS.
-// Precondition: tlsDomains must be non-empty. This function is only called inside the
-// HasTLS() branch, which guarantees at least one TLS domain is configured.
-// If all configured domains fail IDNA normalization, the normalized allowlist will be
-// empty and all requests will receive 421. This is intentional: if no domain can be
-// normalized, no valid certificate can be issued either, so redirecting would be wrong.
-func httpRedirectHandler(tlsDomains []string) http.HandlerFunc {
-	// Normalize configured domains to ASCII (Punycode) for consistent comparison,
-	// matching the normalization that autocert.HostWhitelist applies via idna.Lookup.ToASCII.
-	// Domains that fail normalization are skipped, matching autocert behavior.
-	normalizedDomains := make([]string, 0, len(tlsDomains))
-	for _, d := range tlsDomains {
-		ascii, err := idna.Lookup.ToASCII(d)
-		if err != nil {
-			slog.Warn("Skipping TLS domain that failed IDNA normalization", "domain", d, "error", err)
-			continue
-		}
-		normalizedDomains = append(normalizedDomains, ascii)
+func (s *Server) httpRedirectHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Connection", "close")
+
+	host, _, err := net.SplitHostPort(r.Host)
+	if err != nil {
+		host = r.Host
 	}
 
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Connection", "close")
-
-		// Strip port from host. The redirect URL omits the port intentionally
-		// because HTTPS defaults to 443.
-		host, _, err := net.SplitHostPort(r.Host)
-		if err != nil {
-			host = r.Host
-		}
-
-		normalizedHost, err := idna.Lookup.ToASCII(host)
-		if err != nil {
-			slog.Debug("Rejecting request with host that failed IDNA normalization", "host", host, "error", err)
-			http.Error(w, "Misdirected Request", http.StatusMisdirectedRequest)
-			return
-		}
-
-		allowed := false
-		for _, domain := range normalizedDomains {
-			if normalizedHost == domain {
-				allowed = true
-				break
-			}
-		}
-
-		if !allowed {
-			http.Error(w, "Misdirected Request", http.StatusMisdirectedRequest)
-			return
-		}
-
-		url := "https://" + normalizedHost + r.URL.RequestURI()
-		http.Redirect(w, r, url, http.StatusMovedPermanently)
+	if host, err = idna.Lookup.ToASCII(host); err != nil {
+		http.Error(w, http.StatusText(http.StatusMisdirectedRequest), http.StatusMisdirectedRequest)
+		return
 	}
+
+	if s.manager.HostPolicy(r.Context(), host) != nil {
+		http.Error(w, http.StatusText(http.StatusMisdirectedRequest), http.StatusMisdirectedRequest)
+		return
+	}
+
+	url := "https://" + host + r.URL.RequestURI()
+	http.Redirect(w, r, url, http.StatusMovedPermanently)
 }
