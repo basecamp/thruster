@@ -11,6 +11,7 @@ import (
 
 	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
+	"golang.org/x/net/idna"
 )
 
 type Server struct {
@@ -18,6 +19,7 @@ type Server struct {
 	handler     http.Handler
 	httpServer  *http.Server
 	httpsServer *http.Server
+	manager     *autocert.Manager
 }
 
 func NewServer(config *Config, handler http.Handler) *Server {
@@ -32,13 +34,13 @@ func (s *Server) Start() error {
 	httpsAddress := fmt.Sprintf(":%d", s.config.HttpsPort)
 
 	if s.config.HasTLS() {
-		manager := s.certManager()
+		s.manager = s.certManager()
 
 		s.httpServer = s.defaultHttpServer(httpAddress)
-		s.httpServer.Handler = manager.HTTPHandler(http.HandlerFunc(httpRedirectHandler))
+		s.httpServer.Handler = s.manager.HTTPHandler(http.HandlerFunc(s.httpRedirectHandler))
 
 		s.httpsServer = s.defaultHttpServer(httpsAddress)
-		s.httpsServer.TLSConfig = manager.TLSConfig()
+		s.httpsServer.TLSConfig = s.manager.TLSConfig()
 		s.httpsServer.Handler = s.handler
 
 		httpListener, err := net.Listen("tcp", httpAddress)
@@ -60,6 +62,7 @@ func (s *Server) Start() error {
 		return nil
 	} else {
 		s.httpsServer = nil
+		s.manager = nil
 		s.httpServer = s.defaultHttpServer(httpAddress)
 		s.httpServer.Handler = s.handler
 
@@ -142,12 +145,22 @@ func (s *Server) defaultHttpServer(addr string) *http.Server {
 	}
 }
 
-func httpRedirectHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) httpRedirectHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "close")
 
 	host, _, err := net.SplitHostPort(r.Host)
 	if err != nil {
 		host = r.Host
+	}
+
+	if host, err = idna.Lookup.ToASCII(host); err != nil {
+		http.Error(w, http.StatusText(http.StatusMisdirectedRequest), http.StatusMisdirectedRequest)
+		return
+	}
+
+	if s.manager.HostPolicy(r.Context(), host) != nil {
+		http.Error(w, http.StatusText(http.StatusMisdirectedRequest), http.StatusMisdirectedRequest)
+		return
 	}
 
 	url := "https://" + host + r.URL.RequestURI()

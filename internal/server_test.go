@@ -92,3 +92,67 @@ func makeRoundTripH2cRequest(t *testing.T, h2cEnabled bool) (*http.Response, err
 
 	return client.Get(fmt.Sprintf("http://%s/", listener.Addr()))
 }
+
+func TestHttpRedirect(t *testing.T) {
+	s := &Server{
+		config: &Config{
+			TLSDomains:  []string{"example.com", "café.example.com"},
+			StoragePath: t.TempDir(),
+		},
+	}
+	s.manager = s.certManager()
+
+	redirect := func(url string) *httptest.ResponseRecorder {
+		t.Helper()
+		w := httptest.NewRecorder()
+		s.httpRedirectHandler(w, httptest.NewRequest("GET", url, nil))
+		return w
+	}
+
+	t.Run("disallowed host", func(t *testing.T) {
+		w := redirect("http://evil.com/path")
+
+		assert.Equal(t, http.StatusMisdirectedRequest, w.Code)
+	})
+
+	t.Run("allowed host", func(t *testing.T) {
+		w := redirect("http://example.com/path")
+
+		assert.Equal(t, http.StatusMovedPermanently, w.Code)
+		assert.Equal(t, "https://example.com/path", w.Header().Get("Location"))
+	})
+
+	t.Run("allowed host with explicit port", func(t *testing.T) {
+		w := redirect("http://example.com:80/path")
+
+		assert.Equal(t, http.StatusMovedPermanently, w.Code)
+		assert.Equal(t, "https://example.com/path", w.Header().Get("Location"))
+	})
+
+	t.Run("mixed case allowed host", func(t *testing.T) {
+		w := redirect("http://Example.COM/path")
+
+		assert.Equal(t, http.StatusMovedPermanently, w.Code)
+		assert.Equal(t, "https://example.com/path", w.Header().Get("Location"))
+	})
+
+	t.Run("unicode host", func(t *testing.T) {
+		w := redirect("http://café.example.com/path")
+
+		assert.Equal(t, http.StatusMovedPermanently, w.Code)
+		assert.Equal(t, "https://xn--caf-dma.example.com/path", w.Header().Get("Location"))
+	})
+
+	t.Run("unicode host using punycode", func(t *testing.T) {
+		w := redirect("http://xn--caf-dma.example.com/path")
+
+		assert.Equal(t, http.StatusMovedPermanently, w.Code)
+		assert.Equal(t, "https://xn--caf-dma.example.com/path", w.Header().Get("Location"))
+	})
+
+	t.Run("unicode host using invalid punycode", func(t *testing.T) {
+		w := redirect("http://-xn--caf-dma.example.com/path")
+
+		assert.Equal(t, http.StatusMisdirectedRequest, w.Code)
+	})
+}
