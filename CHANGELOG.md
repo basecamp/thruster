@@ -1,3 +1,7 @@
+## v0.1.20 / 2026-03-25
+
+* Validate host before redirecting HTTP->HTTPS (#120)
+
 ## v0.1.19 / 2026-03-06
 
 * Build with Go 1.26.1
