@@ -27,11 +27,15 @@ const (
 	defaultStoragePath      = "./storage/thruster"
 	defaultBadGatewayPage   = "./public/502.html"
 
-	defaultHttpPort         = 80
-	defaultHttpsPort        = 443
-	defaultHttpIdleTimeout  = 60 * time.Second
-	defaultHttpReadTimeout  = 30 * time.Second
-	defaultHttpWriteTimeout = 30 * time.Second
+	defaultHttpPort           = 80
+	defaultHttpsPort          = 443
+	defaultHttpHealthHost     = "127.0.0.1"
+	defaultHttpHealthTimeout  = 1 * time.Second
+	defaultHttpHealthInterval = 1 * time.Second
+	defaultHttpHealthDeadline = 2 * time.Minute
+	defaultHttpIdleTimeout    = 60 * time.Second
+	defaultHttpReadTimeout    = 30 * time.Second
+	defaultHttpWriteTimeout   = 30 * time.Second
 
 	defaultH2CEnabled = false
 
@@ -62,11 +66,16 @@ type Config struct {
 	StoragePath      string
 	BadGatewayPage   string
 
-	HttpPort         int
-	HttpsPort        int
-	HttpIdleTimeout  time.Duration
-	HttpReadTimeout  time.Duration
-	HttpWriteTimeout time.Duration
+	HttpPort           int
+	HttpsPort          int
+	HttpHealthHost     string
+	HttpHealthPath     string
+	HttpHealthTimeout  time.Duration
+	HttpHealthInterval time.Duration
+	HttpHealthDeadline time.Duration
+	HttpIdleTimeout    time.Duration
+	HttpReadTimeout    time.Duration
+	HttpWriteTimeout   time.Duration
 
 	H2CEnabled bool
 
@@ -89,7 +98,7 @@ func NewConfig() (*Config, error) {
 	config := &Config{
 		TargetPort:      getEnvInt("TARGET_PORT", defaultTargetPort),
 		UpstreamCommand: os.Args[1],
-		UpstreamArgs:    os.Args[2:],
+		UpstreamArgs:    append([]string{}, os.Args[2:]...),
 
 		CacheSizeBytes:               getEnvInt("CACHE_SIZE", defaultCacheSize),
 		MaxCacheItemSizeBytes:        getEnvInt("MAX_CACHE_ITEM_SIZE", defaultMaxCacheItemSizeBytes),
@@ -106,11 +115,16 @@ func NewConfig() (*Config, error) {
 		StoragePath:      getEnvString("STORAGE_PATH", defaultStoragePath),
 		BadGatewayPage:   getEnvString("BAD_GATEWAY_PAGE", defaultBadGatewayPage),
 
-		HttpPort:         getEnvInt("HTTP_PORT", defaultHttpPort),
-		HttpsPort:        getEnvInt("HTTPS_PORT", defaultHttpsPort),
-		HttpIdleTimeout:  getEnvDuration("HTTP_IDLE_TIMEOUT", defaultHttpIdleTimeout),
-		HttpReadTimeout:  getEnvDuration("HTTP_READ_TIMEOUT", defaultHttpReadTimeout),
-		HttpWriteTimeout: getEnvDuration("HTTP_WRITE_TIMEOUT", defaultHttpWriteTimeout),
+		HttpPort:           getEnvInt("HTTP_PORT", defaultHttpPort),
+		HttpsPort:          getEnvInt("HTTPS_PORT", defaultHttpsPort),
+		HttpHealthHost:     getEnvString("HTTP_HEALTH_HOST", defaultHttpHealthHost),
+		HttpHealthPath:     getEnvString("HTTP_HEALTH_PATH", ""),
+		HttpHealthInterval: getEnvDuration("HTTP_HEALTH_INTERVAL", defaultHttpHealthInterval),
+		HttpHealthTimeout:  getEnvDuration("HTTP_HEALTH_TIMEOUT", defaultHttpHealthTimeout),
+		HttpHealthDeadline: getEnvDuration("HTTP_HEALTH_DEADLINE", defaultHttpHealthDeadline),
+		HttpIdleTimeout:    getEnvDuration("HTTP_IDLE_TIMEOUT", defaultHttpIdleTimeout),
+		HttpReadTimeout:    getEnvDuration("HTTP_READ_TIMEOUT", defaultHttpReadTimeout),
+		HttpWriteTimeout:   getEnvDuration("HTTP_WRITE_TIMEOUT", defaultHttpWriteTimeout),
 
 		H2CEnabled: getEnvBool("H2C_ENABLED", defaultH2CEnabled),
 
