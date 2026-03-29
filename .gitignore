@@ -6,3 +6,4 @@
 /pkg
 /exe/
 !/exe/thrust
+.DS_Store
