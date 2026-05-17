@@ -1,6 +1,10 @@
-## v0.1.20 / 2026-05-17
+## v0.1.21 / 2026-05-17
 
 * Build with Go 1.26.3
+
+## v0.1.20 / 2026-03-25
+
+* Only redirect HTTP->HTTPS for policy-allowed hosts
 
 ## v0.1.19 / 2026-03-06
 
