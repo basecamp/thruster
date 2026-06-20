@@ -130,6 +130,52 @@ func TestCompressionHandler_exceptContentTypes(t *testing.T) {
 		handler.ServeHTTP(rr, request())
 
 		assert.Empty(t, rr.Header().Get("Content-Encoding"))
+		assert.Equal(t, largeBody, rr.Body.String())
+	})
+
+	t.Run("matches a non-first configured prefix", func(t *testing.T) {
+		handler := NewCompressionHandler(0, false, []string{"image/png", "image/webp"}, upstreamWithType("image/webp"))
+
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, request())
+
+		assert.Empty(t, rr.Header().Get("Content-Encoding"))
+	})
+
+	t.Run("matches case-insensitively against a mixed-case configured value", func(t *testing.T) {
+		handler := NewCompressionHandler(0, false, []string{"IMAGE/PNG"}, upstreamWithType("image/png"))
+
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, request())
+
+		assert.Empty(t, rr.Header().Get("Content-Encoding"))
+	})
+
+	t.Run("ignores blank entries instead of excluding everything", func(t *testing.T) {
+		handler := NewCompressionHandler(0, false, []string{"", "  "}, upstreamWithType("text/plain"))
+
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, request())
+
+		assert.Equal(t, "gzip", rr.Header().Get("Content-Encoding"))
+	})
+
+	t.Run("still applies the built-in exclusions", func(t *testing.T) {
+		handler := NewCompressionHandler(0, false, []string{"text/html"}, upstreamWithType("image/jpeg"))
+
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, request())
+
+		assert.Empty(t, rr.Header().Get("Content-Encoding"))
+	})
+
+	t.Run("keeps the default behaviour for an empty slice", func(t *testing.T) {
+		handler := NewCompressionHandler(0, false, []string{}, upstreamWithType("image/png"))
+
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, request())
+
+		assert.Equal(t, "gzip", rr.Header().Get("Content-Encoding"))
 	})
 
 	t.Run("matches a content type carrying parameters", func(t *testing.T) {

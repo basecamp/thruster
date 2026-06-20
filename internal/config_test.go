@@ -106,6 +106,7 @@ func TestConfig_defaults(t *testing.T) {
 	assert.Equal(t, defaultCacheSize, c.CacheSizeBytes)
 	assert.Equal(t, slog.LevelInfo, c.LogLevel)
 	assert.Equal(t, false, c.H2CEnabled)
+	assert.Equal(t, []string{}, c.GzipCompressionExceptContentTypes)
 }
 
 func TestConfig_override_defaults_with_env_vars(t *testing.T) {
