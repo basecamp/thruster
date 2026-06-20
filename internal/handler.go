@@ -7,17 +7,18 @@ import (
 )
 
 type HandlerOptions struct {
-	badGatewayPage               string
-	cache                        Cache
-	maxCacheableResponseBody     int
-	maxRequestBody               int
-	targetUrl                    *url.URL
-	xSendfileEnabled             bool
-	gzipCompressionEnabled       bool
-	gzipCompressionDisableOnAuth bool
-	gzipCompressionJitter        int
-	forwardHeaders               bool
-	logRequests                  bool
+	badGatewayPage                    string
+	cache                             Cache
+	maxCacheableResponseBody          int
+	maxRequestBody                    int
+	targetUrl                         *url.URL
+	xSendfileEnabled                  bool
+	gzipCompressionEnabled            bool
+	gzipCompressionDisableOnAuth      bool
+	gzipCompressionJitter             int
+	gzipCompressionExceptContentTypes []string
+	forwardHeaders                    bool
+	logRequests                       bool
 }
 
 func NewHandler(options HandlerOptions) http.Handler {
@@ -27,7 +28,7 @@ func NewHandler(options HandlerOptions) http.Handler {
 	handler = NewRequestStartHandler(handler)
 
 	if options.gzipCompressionEnabled {
-		handler = NewCompressionHandler(options.gzipCompressionJitter, options.gzipCompressionDisableOnAuth, handler)
+		handler = NewCompressionHandler(options.gzipCompressionJitter, options.gzipCompressionDisableOnAuth, options.gzipCompressionExceptContentTypes, handler)
 	}
 
 	if options.maxRequestBody > 0 {

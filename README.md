@@ -81,6 +81,7 @@ environment variables that you can set.
 | `GZIP_COMPRESSION_ENABLED`  | Whether to enable gzip compression for responses. Set to `0` or `false` to disable. | Enabled |
 | `GZIP_COMPRESSION_DISABLE_ON_AUTH` | If set to `true`, disable gzip compression for authenticated requests with `Cookie`, `Authorization`, or `X-Csrf-Token` headers. | `false` |
 | `GZIP_COMPRESSION_JITTER`   | The amount of random jitter (in bytes) to add to the compressed response size to mitigate BREACH attacks. Set to `0` to disable. | 32 |
+| `GZIP_COMPRESSION_EXCEPT_CONTENT_TYPES` | Comma-separated list of content types to exclude from gzip compression, in addition to the built-in exclusions. Matched by prefix, so `image/` excludes all image types while `image/png` excludes only PNG. Useful for already-compressed types (e.g. `image/png`, `image/webp`, `image/avif`) where compression wastes CPU and drops `Content-Length`. | None |
 | `X_SENDFILE_ENABLED`        | Whether to enable X-Sendfile support. Set to `0` or `false` to disable. | Enabled |
 | `MAX_REQUEST_BODY`          | The maximum size of a request body in bytes. Requests larger than this size will be refused; `0` means no maximum size is enforced. | `0` |
 | `STORAGE_PATH`              | The path to store Thruster's internal state. Provisioned TLS certificates will be stored here, so that they will not need to be requested every time your application is started. | `./storage/thruster` |

@@ -22,7 +22,7 @@ func TestCompressionHandler(t *testing.T) {
 	})
 
 	t.Run("compresses responses", func(t *testing.T) {
-		handler := NewCompressionHandler(0, false, upstream)
+		handler := NewCompressionHandler(0, false, nil, upstream)
 
 		req := httptest.NewRequest("GET", "/", nil)
 		req.Header.Set("Accept-Encoding", "gzip")
@@ -41,7 +41,7 @@ func TestCompressionHandler(t *testing.T) {
 	})
 
 	t.Run("applies jitter when configured", func(t *testing.T) {
-		handler := NewCompressionHandler(32, false, upstream)
+		handler := NewCompressionHandler(32, false, nil, upstream)
 
 		req := httptest.NewRequest("GET", "/", nil)
 		req.Header.Set("Accept-Encoding", "gzip")
@@ -59,7 +59,7 @@ func TestCompressionHandler(t *testing.T) {
 	})
 
 	t.Run("wraps with guard when disableOnAuth is true", func(t *testing.T) {
-		handler := NewCompressionHandler(0, true, upstream)
+		handler := NewCompressionHandler(0, true, nil, upstream)
 
 		req := httptest.NewRequest("GET", "/", nil)
 		req.Header.Set("Accept-Encoding", "gzip")
@@ -74,7 +74,7 @@ func TestCompressionHandler(t *testing.T) {
 	})
 
 	t.Run("compresses authenticated requests when disableOnAuth is false", func(t *testing.T) {
-		handler := NewCompressionHandler(0, false, upstream)
+		handler := NewCompressionHandler(0, false, nil, upstream)
 
 		req := httptest.NewRequest("GET", "/", nil)
 		req.Header.Set("Accept-Encoding", "gzip")
@@ -82,6 +82,70 @@ func TestCompressionHandler(t *testing.T) {
 		rr := httptest.NewRecorder()
 
 		handler.ServeHTTP(rr, req)
+
+		assert.Equal(t, "gzip", rr.Header().Get("Content-Encoding"))
+	})
+}
+
+func TestCompressionHandler_exceptContentTypes(t *testing.T) {
+	largeBody := strings.Repeat("A", 2000)
+
+	upstreamWithType := func(contentType string) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", contentType)
+			_, err := w.Write([]byte(largeBody))
+			require.NoError(t, err)
+		})
+	}
+
+	request := func() *http.Request {
+		req := httptest.NewRequest("GET", "/", nil)
+		req.Header.Set("Accept-Encoding", "gzip")
+		return req
+	}
+
+	t.Run("does not compress an excluded content type", func(t *testing.T) {
+		handler := NewCompressionHandler(0, false, []string{"image/png"}, upstreamWithType("image/png"))
+
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, request())
+
+		assert.Empty(t, rr.Header().Get("Content-Encoding"))
+		assert.Equal(t, largeBody, rr.Body.String())
+	})
+
+	t.Run("still compresses other content types", func(t *testing.T) {
+		handler := NewCompressionHandler(0, false, []string{"image/png"}, upstreamWithType("text/plain"))
+
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, request())
+
+		assert.Equal(t, "gzip", rr.Header().Get("Content-Encoding"))
+	})
+
+	t.Run("matches by prefix", func(t *testing.T) {
+		handler := NewCompressionHandler(0, false, []string{"image/"}, upstreamWithType("image/webp"))
+
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, request())
+
+		assert.Empty(t, rr.Header().Get("Content-Encoding"))
+	})
+
+	t.Run("matches a content type carrying parameters", func(t *testing.T) {
+		handler := NewCompressionHandler(0, false, []string{"image/svg+xml"}, upstreamWithType("image/svg+xml; charset=utf-8"))
+
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, request())
+
+		assert.Empty(t, rr.Header().Get("Content-Encoding"))
+	})
+
+	t.Run("keeps the default behaviour when no exceptions are configured", func(t *testing.T) {
+		handler := NewCompressionHandler(0, false, nil, upstreamWithType("image/png"))
+
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, request())
 
 		assert.Equal(t, "gzip", rr.Header().Get("Content-Encoding"))
 	})

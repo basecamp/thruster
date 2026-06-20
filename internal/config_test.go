@@ -121,6 +121,7 @@ func TestConfig_override_defaults_with_env_vars(t *testing.T) {
 	usingEnvVar(t, "H2C_ENABLED", "true")
 	usingEnvVar(t, "GZIP_COMPRESSION_DISABLE_ON_AUTH", "true")
 	usingEnvVar(t, "GZIP_COMPRESSION_JITTER", "64")
+	usingEnvVar(t, "GZIP_COMPRESSION_EXCEPT_CONTENT_TYPES", "image/png, image/webp")
 
 	c, err := NewConfig()
 	require.NoError(t, err)
@@ -136,6 +137,7 @@ func TestConfig_override_defaults_with_env_vars(t *testing.T) {
 	assert.Equal(t, true, c.H2CEnabled)
 	assert.Equal(t, true, c.GzipCompressionDisableOnAuth)
 	assert.Equal(t, 64, c.GzipCompressionJitter)
+	assert.Equal(t, []string{"image/png", "image/webp"}, c.GzipCompressionExceptContentTypes)
 }
 
 func TestConfig_override_defaults_with_env_vars_using_prefix(t *testing.T) {
