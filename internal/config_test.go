@@ -106,6 +106,8 @@ func TestConfig_defaults(t *testing.T) {
 	assert.Equal(t, defaultCacheSize, c.CacheSizeBytes)
 	assert.Equal(t, slog.LevelInfo, c.LogLevel)
 	assert.Equal(t, false, c.H2CEnabled)
+	assert.Equal(t, false, c.WaitForTargetPort)
+	assert.Equal(t, 60*time.Second, c.WaitForTargetPortTimeout)
 }
 
 func TestConfig_override_defaults_with_env_vars(t *testing.T) {
@@ -121,6 +123,8 @@ func TestConfig_override_defaults_with_env_vars(t *testing.T) {
 	usingEnvVar(t, "H2C_ENABLED", "true")
 	usingEnvVar(t, "GZIP_COMPRESSION_DISABLE_ON_AUTH", "true")
 	usingEnvVar(t, "GZIP_COMPRESSION_JITTER", "64")
+	usingEnvVar(t, "WAIT_FOR_TARGET_PORT", "true")
+	usingEnvVar(t, "WAIT_FOR_TARGET_PORT_TIMEOUT", "5")
 
 	c, err := NewConfig()
 	require.NoError(t, err)
@@ -136,6 +140,8 @@ func TestConfig_override_defaults_with_env_vars(t *testing.T) {
 	assert.Equal(t, true, c.H2CEnabled)
 	assert.Equal(t, true, c.GzipCompressionDisableOnAuth)
 	assert.Equal(t, 64, c.GzipCompressionJitter)
+	assert.Equal(t, true, c.WaitForTargetPort)
+	assert.Equal(t, 5*time.Second, c.WaitForTargetPortTimeout)
 }
 
 func TestConfig_override_defaults_with_env_vars_using_prefix(t *testing.T) {
@@ -147,6 +153,8 @@ func TestConfig_override_defaults_with_env_vars_using_prefix(t *testing.T) {
 	usingEnvVar(t, "THRUSTER_DEBUG", "1")
 	usingEnvVar(t, "THRUSTER_LOG_REQUESTS", "0")
 	usingEnvVar(t, "THRUSTER_H2C_ENABLED", "1")
+	usingEnvVar(t, "THRUSTER_WAIT_FOR_TARGET_PORT", "1")
+	usingEnvVar(t, "THRUSTER_WAIT_FOR_TARGET_PORT_TIMEOUT", "10")
 
 	c, err := NewConfig()
 	require.NoError(t, err)
@@ -158,6 +166,8 @@ func TestConfig_override_defaults_with_env_vars_using_prefix(t *testing.T) {
 	assert.Equal(t, slog.LevelDebug, c.LogLevel)
 	assert.Equal(t, false, c.LogRequests)
 	assert.Equal(t, true, c.H2CEnabled)
+	assert.Equal(t, true, c.WaitForTargetPort)
+	assert.Equal(t, 10*time.Second, c.WaitForTargetPortTimeout)
 }
 
 func TestConfig_prefixed_variables_take_precedence_over_non_prefixed(t *testing.T) {
