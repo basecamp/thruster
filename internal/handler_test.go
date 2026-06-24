@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strconv"
 	"testing"
 
@@ -80,12 +82,12 @@ func TestHandlerGzipCompression_is_not_applied_when_not_requested(t *testing.T) 
 }
 
 func TestHandlerGzipCompression_does_not_compress_images(t *testing.T) {
-	fixtureLength := strconv.FormatInt(fixtureLength("image.jpg"), 10)
+	fixtureLength := strconv.FormatInt(fixtureLength("image.png"), 10)
 
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "image/jpg")
+		w.Header().Set("Content-Type", "image/png")
 		w.Header().Set("Content-Length", fixtureLength)
-		_, _ = w.Write(fixtureContent("image.jpg"))
+		_, _ = w.Write(fixtureContent("image.png"))
 	}))
 	defer upstream.Close()
 
@@ -97,7 +99,7 @@ func TestHandlerGzipCompression_does_not_compress_images(t *testing.T) {
 	h.ServeHTTP(w, r)
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Header().Get("Content-Type"), "image/jpg")
+	assert.Contains(t, w.Header().Get("Content-Type"), "image/png")
 	assert.NotEqual(t, "gzip", w.Header().Get("Content-Encoding"))
 	assert.Equal(t, fixtureLength, w.Header().Get("Content-Length"))
 }
@@ -123,6 +125,35 @@ func TestHandlerGzipCompression_when_sendfile(t *testing.T) {
 
 	transferredSize, _ := strconv.ParseInt(w.Header().Get("Content-Length"), 10, 64)
 	assert.Less(t, transferredSize, fixtureLength("loremipsum.txt"))
+}
+
+func TestHandlerGzipCompression_does_not_compress_sendfile_png(t *testing.T) {
+	dir := t.TempDir()
+	fileContent := bytes.Repeat([]byte("A"), 2000)
+	filename := filepath.Join(dir, "image.png")
+	if !assert.NoError(t, os.WriteFile(filename, fileContent, 0644)) {
+		return
+	}
+
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "X-Sendfile", r.Header.Get("X-Sendfile-Type"))
+
+		w.Header().Set("X-Sendfile", filename)
+	}))
+	defer upstream.Close()
+
+	h := NewHandler(handlerOptions(upstream.URL))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/", nil)
+	r.Header.Set("Accept-Encoding", "gzip")
+	h.ServeHTTP(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "image/png", w.Header().Get("Content-Type"))
+	assert.Empty(t, w.Header().Get("Content-Encoding"))
+	assert.Equal(t, strconv.Itoa(len(fileContent)), w.Header().Get("Content-Length"))
+	assert.Equal(t, fileContent, w.Body.Bytes())
 }
 
 func TestHandler_do_not_request_compressed_responses_from_upstream_unless_client_does(t *testing.T) {

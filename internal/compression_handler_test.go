@@ -86,3 +86,69 @@ func TestCompressionHandler(t *testing.T) {
 		assert.Equal(t, "gzip", rr.Header().Get("Content-Encoding"))
 	})
 }
+
+func TestCompressionHandler_contentTypeFilter(t *testing.T) {
+	largeBody := strings.Repeat("A", 2000)
+
+	upstreamWithType := func(contentType string) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", contentType)
+			_, err := w.Write([]byte(largeBody))
+			require.NoError(t, err)
+		})
+	}
+
+	request := func() *http.Request {
+		req := httptest.NewRequest("GET", "/", nil)
+		req.Header.Set("Accept-Encoding", "gzip")
+		return req
+	}
+
+	compressedContentTypes := []string{
+		"image/bmp",
+		"image/svg+xml",
+		"image/tiff",
+		"text/plain",
+	}
+
+	excludedContentTypes := []string{
+		"IMAGE/PNG",
+		"image/apng",
+		"image/avif",
+		"image/avif-sequence",
+		"image/gif",
+		"image/heic",
+		"image/heic-sequence",
+		"image/heif",
+		"image/heif-sequence",
+		"image/jpeg",
+		"image/jpg",
+		"image/jxl",
+		"image/png",
+		"image/png; charset=utf-8",
+		"image/webp",
+	}
+
+	for _, contentType := range compressedContentTypes {
+		t.Run("still compresses "+contentType, func(t *testing.T) {
+			handler := NewCompressionHandler(0, false, upstreamWithType(contentType))
+
+			rr := httptest.NewRecorder()
+			handler.ServeHTTP(rr, request())
+
+			assert.Equal(t, "gzip", rr.Header().Get("Content-Encoding"))
+		})
+	}
+
+	for _, contentType := range excludedContentTypes {
+		t.Run("does not compress "+contentType, func(t *testing.T) {
+			handler := NewCompressionHandler(0, false, upstreamWithType(contentType))
+
+			rr := httptest.NewRecorder()
+			handler.ServeHTTP(rr, request())
+
+			assert.Empty(t, rr.Header().Get("Content-Encoding"))
+			assert.Equal(t, largeBody, rr.Body.String())
+		})
+	}
+}
