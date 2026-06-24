@@ -14,8 +14,14 @@ Gem::Specification.new do |s|
     "homepage_uri" => s.homepage,
     "rubygems_mfa_required" => "true"
   }
+  
 
   s.files = Dir[ "{lib}/**/*", "MIT-LICENSE", "README.md" ]
   s.bindir = "exe"
+  if RUBY_PLATFORM =~ /java/
+    s.platform = 'java'
+    s.files + ["exe/aarch64-linux/thrust", "exe/arm64-darwin/thrust", "exe/x86_64-darwin/thrust", "exe/x86_64-linux/thrust"]
+  end
+
   s.executables << "thrust"
 end
