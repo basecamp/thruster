@@ -1,3 +1,8 @@
+## v0.1.22 / 2026-06-29
+
+* Build with Go 1.26.4
+* Exclude image types from compression (#137)
+
 ## v0.1.21 / 2026-05-17
 
 * Build with Go 1.26.3
