@@ -47,6 +47,13 @@ func TestCacheHandler_caching(t *testing.T) {
 			[]string{"bypass", "bypass", "bypass"},
 			0,
 		},
+		"uncacheable request due to long cache key": {
+			httptest.NewRequest("GET", "http://example.com/?q="+strings.Repeat("a", 9*KB), nil),
+			"public, max-age=60",
+			[]string{"Hello 1", "Hello 2", "Hello 3"},
+			[]string{"bypass", "bypass", "bypass"},
+			0,
+		},
 	}
 
 	for name, tc := range tests {
@@ -166,6 +173,30 @@ func TestCacheHandler_vary_header(t *testing.T) {
 	assert.Equal(t, "hit", resp.Header().Get("X-Cache"))
 }
 
+func TestCacheHandler_oversized_vary_key_is_not_cached(t *testing.T) {
+	cache := newTestCache()
+	handler := NewCacheHandler(cache, 1024, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Vary", "Accept")
+		w.Header().Set("Cache-Control", "public, max-age=600")
+		_, _ = w.Write([]byte("Hello"))
+	}))
+
+	doReq := func(accept string) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "http://example.com", nil)
+		r.Header.Set("Accept", accept)
+		handler.ServeHTTP(w, r)
+		return w
+	}
+
+	resp := doReq("application/json")
+	assert.Equal(t, "miss", resp.Header().Get("X-Cache"))
+
+	resp = doReq(strings.Repeat("a", 9*KB))
+	assert.Equal(t, "bypass", resp.Header().Get("X-Cache"))
+	assert.Equal(t, 1, len(cache.items))
+}
+
 func TestCacheHandler_different_hosts(t *testing.T) {
 	cache := newTestCache()
 	handler := NewCacheHandler(cache, 1024, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -259,18 +290,18 @@ func BenchmarkCacheHandler_retrieving(b *testing.B) {
 // Mocks
 
 type testCache struct {
-	items map[CacheKey][]byte
+	items map[RequestKey][]byte
 }
 
 func newTestCache() *testCache {
-	return &testCache{items: make(map[CacheKey][]byte)}
+	return &testCache{items: make(map[RequestKey][]byte)}
 }
 
-func (t *testCache) Get(key CacheKey) ([]byte, bool) {
+func (t *testCache) Get(key RequestKey) ([]byte, bool) {
 	item, found := t.items[key]
 	return item, found
 }
 
-func (t *testCache) Set(key CacheKey, value []byte, expiresAt time.Time) {
+func (t *testCache) Set(key RequestKey, value []byte, expiresAt time.Time) {
 	t.items[key] = value
 }

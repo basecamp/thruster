@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"hash/fnv"
 	"net/http"
 	"slices"
 	"strings"
@@ -20,18 +19,19 @@ func (v *Variant) SetResponseHeader(header http.Header) {
 	v.headerNames = v.parseVaryHeader(header)
 }
 
-func (v *Variant) CacheKey() CacheKey {
-	hash := fnv.New64()
-	hash.Write([]byte(v.r.Method))
-	hash.Write([]byte(v.r.URL.Path))
-	hash.Write([]byte(v.r.URL.Query().Encode()))
-	hash.Write([]byte(v.r.Host))
-
-	for _, name := range v.headerNames {
-		hash.Write([]byte(name + "=" + v.r.Header.Get(name)))
+func (v *Variant) CacheKey() RequestKey {
+	vary := make([]string, len(v.headerNames))
+	for i, name := range v.headerNames {
+		vary[i] = name + "=" + v.r.Header.Get(name)
 	}
 
-	return CacheKey(hash.Sum64())
+	return RequestKey{
+		Method: strings.Clone(v.r.Method),
+		Host:   strings.Clone(v.r.Host),
+		Path:   strings.Clone(v.r.URL.Path),
+		Query:  v.r.URL.Query().Encode(),
+		Vary:   strings.Join(vary, "\n"),
+	}
 }
 
 func (v *Variant) Matches(responseHeader http.Header) bool {

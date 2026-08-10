@@ -15,8 +15,8 @@ type MemoryCacheEntry struct {
 	value          []byte
 }
 
-type MemoryCacheEntryMap map[CacheKey]*MemoryCacheEntry
-type MemoryCacheKeyList []CacheKey
+type MemoryCacheEntryMap map[RequestKey]*MemoryCacheEntry
+type MemoryCacheKeyList []RequestKey
 
 type MemoryCache struct {
 	sync.Mutex
@@ -39,12 +39,12 @@ func NewMemoryCache(capacity, maxItemSize int) *MemoryCache {
 	}
 }
 
-func (c *MemoryCache) Set(key CacheKey, value []byte, expiresAt time.Time) {
+func (c *MemoryCache) Set(key RequestKey, value []byte, expiresAt time.Time) {
 	c.Lock()
 	defer c.Unlock()
 
-	itemSize := len(value)
-	if itemSize > c.maxItemSize || itemSize > c.capacity {
+	itemSize := key.size() + len(value)
+	if len(value) > c.maxItemSize || itemSize > c.capacity {
 		slog.Debug("Cache: item is too large to store", "len", itemSize)
 		return
 	}
@@ -57,7 +57,7 @@ func (c *MemoryCache) Set(key CacheKey, value []byte, expiresAt time.Time) {
 
 	existingItem, ok := c.items[key]
 	if ok {
-		c.size -= len(existingItem.value)
+		c.size -= key.size() + len(existingItem.value)
 	} else {
 		c.keys = append(c.keys, key)
 	}
@@ -70,10 +70,10 @@ func (c *MemoryCache) Set(key CacheKey, value []byte, expiresAt time.Time) {
 
 	c.size += itemSize
 
-	slog.Debug("Cache: added item", "key", key, "size", itemSize, "expires_at", expiresAt)
+	slog.Debug("Cache: added item", "size", itemSize, "expires_at", expiresAt)
 }
 
-func (c *MemoryCache) Get(key CacheKey) ([]byte, bool) {
+func (c *MemoryCache) Get(key RequestKey) ([]byte, bool) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -89,7 +89,7 @@ func (c *MemoryCache) Get(key CacheKey) ([]byte, bool) {
 }
 
 func (c *MemoryCache) evictOldestItem() {
-	var oldestKey CacheKey
+	var oldestKey RequestKey
 	var oldestIndex int
 	var oldest time.Time
 
@@ -122,6 +122,6 @@ func (c *MemoryCache) evictOldestItem() {
 	c.keys[oldestIndex] = c.keys[len(c.keys)-1]
 	c.keys = c.keys[:len(c.keys)-1]
 
-	c.size -= len(c.items[oldestKey].value)
+	c.size -= oldestKey.size() + len(c.items[oldestKey].value)
 	delete(c.items, oldestKey)
 }
