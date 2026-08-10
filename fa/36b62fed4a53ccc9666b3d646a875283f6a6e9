@@ -1,0 +1,30 @@
+internal/cache_handler.go
+  s_7435cc13981276::t_ebc8f131eb7897 31-37,60
+  s_7435cc13981276::t_63783d84def09f 85-89
+internal/cache_handler_test.go
+  s_7435cc13981276::t_582c6a7d0dfd35 244-293
+  s_7435cc13981276::t_be430c48ef50b0 327-342
+internal/cacheable_response.go
+  s_7435cc13981276::t_ed175f5f39f481 24-28
+internal/variant.go
+  s_7435cc13981276::t_c55c17a5a0bdbd 79-89
+  s_7435cc13981276::t_2e45b99428b8ea 4-5,17-28,38-42,45,48-57
+internal/variant_test.go
+  s_7435cc13981276::t_f08c71e3d65b3f 22-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "fa36b62fed4a53ccc9666b3d646a875283f6a6e9",
+  "prompts": {},
+  "sessions": {
+    "s_7435cc13981276": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "794cb0da-a236-4f3c-9fe2-69d744aa6360",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}
