@@ -44,6 +44,11 @@ func NewCacheHandler(cache Cache, maxBodySize int, next http.Handler) *CacheHand
 }
 
 func (h *CacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if !h.shouldCacheRequest(r) {
+		h.bypassCache(w, r)
+		return
+	}
+
 	variant := NewVariant(r)
 	response, key, found := h.fetchFromCache(r, variant)
 
@@ -59,7 +64,7 @@ func (h *CacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !h.shouldCacheRequest(r) || !key.isCacheable() {
+	if !key.isCacheable() {
 		h.bypassCache(w, r)
 		return
 	}

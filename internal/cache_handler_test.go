@@ -253,6 +253,14 @@ func TestCacheHandler_range_requests_are_not_cached(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/", nil)
+	handler.ServeHTTP(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "miss", w.Header().Get("X-Cache"))
+	assert.Equal(t, 1, len(cache.items))
+
+	w = httptest.NewRecorder()
+	r = httptest.NewRequest("GET", "/", nil)
 	r.Header.Set("Range", "bytes=0-1")
 	handler.ServeHTTP(w, r)
 
@@ -269,6 +277,30 @@ func TestCacheHandler_range_requests_are_not_cached(t *testing.T) {
 	assert.Equal(t, http.StatusPartialContent, w.Code)
 	assert.Equal(t, "4", w.Header().Get("Content-Length"))
 	assert.Equal(t, fixtureContent("image.jpg")[2:6], w.Body.Bytes())
+	assert.Equal(t, "bypass", w.Header().Get("X-Cache"))
+}
+
+func TestCacheHandler_upgrade_requests_bypass_the_cache(t *testing.T) {
+	cache := newTestCache()
+
+	handler := NewCacheHandler(cache, 1024, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=60")
+		_, _ = w.Write([]byte("Hello"))
+	}))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/", nil)
+	handler.ServeHTTP(w, r)
+
+	assert.Equal(t, "miss", w.Header().Get("X-Cache"))
+	assert.Equal(t, 1, len(cache.items))
+
+	w = httptest.NewRecorder()
+	r = httptest.NewRequest("GET", "/", nil)
+	r.Header.Set("Connection", "Upgrade")
+	r.Header.Set("Upgrade", "websocket")
+	handler.ServeHTTP(w, r)
+
 	assert.Equal(t, "bypass", w.Header().Get("X-Cache"))
 }
 
