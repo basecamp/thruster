@@ -1,3 +1,7 @@
+## v0.1.25 / 2026-08-11
+
+* Bypass all uncacheable requests (#142)
+
 ## v0.1.24 / 2026-08-11
 
 * Use struct types as cache keys
