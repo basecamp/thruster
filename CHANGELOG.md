@@ -1,3 +1,11 @@
+## v0.1.24 / 2026-08-11
+
+* Use struct types as cache keys
+
+## v0.1.23 / 2026-07-16
+
+* Build with Go 1.26.5 (#140)
+
 ## v0.1.22 / 2026-06-29
 
 * Build with Go 1.26.4
