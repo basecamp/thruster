@@ -1,3 +1,9 @@
+## v0.1.26 / 2026-08-24
+
+* Add X-Request-ID header to requests and logs (#148)
+* Build with Go 1.27.0 (#147)
+* Build with Go 1.26.6 (#145)
+
 ## v0.1.25 / 2026-08-11
 
 * Bypass all uncacheable requests (#142)
