@@ -79,10 +79,10 @@ func (h *CacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		encoded, err := cr.ToBuffer()
 		if err != nil {
-			slog.Error("Failed to encode response for caching", "path", r.URL.Path, "error", err)
+			slog.Error("Failed to encode response for caching", "request_id", loggableRequestID(r), "path", r.URL.Path, "error", err)
 		} else {
 			h.cache.Set(key, encoded, expires)
-			slog.Debug("Added response to cache", "path", r.URL.Path, "expires", expires, "size", len(encoded))
+			slog.Debug("Added response to cache", "request_id", loggableRequestID(r), "path", r.URL.Path, "expires", expires, "size", len(encoded))
 		}
 	}
 }
@@ -90,7 +90,7 @@ func (h *CacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // Private
 
 func (h *CacheHandler) bypassCache(w http.ResponseWriter, r *http.Request) {
-	slog.Debug("Bypassing cache for request", "path", r.URL.Path, "method", r.Method)
+	slog.Debug("Bypassing cache for request", "request_id", loggableRequestID(r), "path", r.URL.Path, "method", r.Method)
 	w.Header().Set("X-Cache", "bypass")
 	h.next.ServeHTTP(w, r)
 }
@@ -106,7 +106,7 @@ func (h *CacheHandler) fetchFromCache(r *http.Request, variant *Variant) (Cachea
 	if found {
 		response, err := CacheableResponseFromBuffer(cached)
 		if err != nil {
-			slog.Error("Failed to decode cached response", "path", r.URL.Path, "error", err)
+			slog.Error("Failed to decode cached response", "request_id", loggableRequestID(r), "path", r.URL.Path, "error", err)
 			return CacheableResponse{}, key, false
 		}
 

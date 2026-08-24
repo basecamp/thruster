@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"testing"
+	"uuid"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -310,6 +311,110 @@ func TestHandlerAddsXRequestStartHeader(t *testing.T) {
 	h.ServeHTTP(w, r)
 
 	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestHandlerAddsXRequestIDHeader(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		header := r.Header.Get("X-Request-ID")
+		assert.NotEmpty(t, header, "X-Request-ID header should be present")
+		_, err := uuid.Parse(header)
+		assert.NoError(t, err, "X-Request-ID header should be a UUID")
+	}))
+	defer upstream.Close()
+
+	h := NewHandler(handlerOptions(upstream.URL))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/", nil)
+	h.ServeHTTP(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestHandlerForwardsExistingXRequestIDHeaderWhenForwardingEnabled(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "id-from-downstream", r.Header.Get("X-Request-ID"))
+	}))
+	defer upstream.Close()
+
+	h := NewHandler(handlerOptions(upstream.URL))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/", nil)
+	r.Header.Set("X-Request-ID", "id-from-downstream")
+	h.ServeHTTP(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestHandlerReplacesExistingXRequestIDHeaderWhenForwardingNotEnabled(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		header := r.Header.Get("X-Request-ID")
+		assert.NotEqual(t, "id-from-client", header)
+		_, err := uuid.Parse(header)
+		assert.NoError(t, err, "X-Request-ID header should be a UUID")
+	}))
+	defer upstream.Close()
+
+	options := handlerOptions(upstream.URL)
+	options.forwardHeaders = false
+	h := NewHandler(options)
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/", nil)
+	r.Header.Set("X-Request-ID", "id-from-client")
+	h.ServeHTTP(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestHandlerSetsXRequestIDResponseHeaderIgnoringUpstreamEcho(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Request-ID", "id-from-upstream")
+	}))
+	defer upstream.Close()
+
+	h := NewHandler(handlerOptions(upstream.URL))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/", nil)
+	h.ServeHTTP(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	values := w.Header().Values("X-Request-ID")
+	assert.Len(t, values, 1)
+	_, err := uuid.Parse(values[0])
+	assert.NoError(t, err)
+}
+
+func TestHandlerSetsFreshXRequestIDOnCachedResponses(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=60")
+		w.Header().Set("X-Request-ID", r.Header.Get("X-Request-ID"))
+		_, _ = w.Write([]byte("cacheable response"))
+	}))
+	defer upstream.Close()
+
+	h := NewHandler(handlerOptions(upstream.URL))
+
+	serveRequest := func() (string, string) {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/", nil)
+		h.ServeHTTP(w, r)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		return w.Header().Get("X-Cache"), w.Header().Get("X-Request-ID")
+	}
+
+	firstCache, firstID := serveRequest()
+	secondCache, secondID := serveRequest()
+
+	assert.Equal(t, "miss", firstCache)
+	assert.Equal(t, "hit", secondCache)
+	assert.NotEmpty(t, firstID)
+	assert.NotEmpty(t, secondID)
+	assert.NotEqual(t, firstID, secondID)
 }
 
 func TestHandlerAllowsFlushingTheResponseBody(t *testing.T) {

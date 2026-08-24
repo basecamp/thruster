@@ -16,6 +16,10 @@ func NewProxyHandler(targetUrl *url.URL, badGatewayPage string, forwardHeaders b
 			r.Out.Host = r.In.Host
 			setXForwarded(r, forwardHeaders)
 		},
+		ModifyResponse: func(r *http.Response) error {
+			r.Header.Del("X-Request-ID") // We set our own in NewRequestIDHandler
+			return nil
+		},
 		ErrorHandler: ProxyErrorHandler(badGatewayPage),
 		Transport:    createProxyTransport(),
 	}
@@ -29,7 +33,7 @@ func ProxyErrorHandler(badGatewayPage string) func(w http.ResponseWriter, r *htt
 	}
 
 	return func(w http.ResponseWriter, r *http.Request, err error) {
-		slog.Info("Unable to proxy request", "path", r.URL.Path, "error", err)
+		slog.Info("Unable to proxy request", "request_id", loggableRequestID(r), "path", r.URL.Path, "error", err)
 
 		if isRequestEntityTooLarge(err) {
 			w.WriteHeader(http.StatusRequestEntityTooLarge)

@@ -126,7 +126,7 @@ func (c *CacheableResponse) WriteCachedResponse(w http.ResponseWriter, r *http.R
 		c.copyHeaders(w, true, c.StatusCode)
 		_, err := io.Copy(w, bytes.NewReader(c.Body))
 		if err != nil {
-			slog.Error("Error writing cached response body", "error", err)
+			slog.Error("Error writing cached response body", "request_id", loggableRequestID(r), "error", err)
 		}
 	}
 }
