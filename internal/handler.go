@@ -25,6 +25,7 @@ func NewHandler(options HandlerOptions) http.Handler {
 	handler = NewCacheHandler(options.cache, options.maxCacheableResponseBody, handler)
 	handler = NewSendfileHandler(options.xSendfileEnabled, handler)
 	handler = NewRequestStartHandler(handler)
+	handler = NewRequestIDHandler(options.forwardHeaders, handler)
 
 	if options.gzipCompressionEnabled {
 		handler = NewCompressionHandler(options.gzipCompressionJitter, options.gzipCompressionDisableOnAuth, handler)
