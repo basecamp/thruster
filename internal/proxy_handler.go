@@ -14,7 +14,9 @@ func NewProxyHandler(targetUrl *url.URL, badGatewayPage string, forwardHeaders b
 		Rewrite: func(r *httputil.ProxyRequest) {
 			r.SetURL(targetUrl)
 			r.Out.Host = r.In.Host
+
 			setXForwarded(r, forwardHeaders)
+			restoreOwnedHeaders(r)
 		},
 		ModifyResponse: func(r *http.Response) error {
 			r.Header.Del("X-Request-ID") // We set our own in NewRequestIDHandler
@@ -59,12 +61,22 @@ func setXForwarded(r *httputil.ProxyRequest, forwardHeaders bool) {
 
 	if forwardHeaders {
 		// Preserve original headers if we had them
-		if r.In.Header.Get("X-Forwarded-Host") != "" {
-			r.Out.Header.Set("X-Forwarded-Host", r.In.Header.Get("X-Forwarded-Host"))
-		}
-		if r.In.Header.Get("X-Forwarded-Proto") != "" {
-			r.Out.Header.Set("X-Forwarded-Proto", r.In.Header.Get("X-Forwarded-Proto"))
-		}
+		transferHeader(r, "X-Forwarded-Host")
+		transferHeader(r, "X-Forwarded-Proto")
+	}
+}
+
+// ReverseProxy strips any header the client names in its Connection header,
+// as hop-by-hop. That's correct for the client's own headers, but not for the
+// ones we set ourselves, so restore those.
+func restoreOwnedHeaders(r *httputil.ProxyRequest) {
+	transferHeader(r, "X-Request-ID")
+	transferHeader(r, "X-Request-Start")
+}
+
+func transferHeader(r *httputil.ProxyRequest, name string) {
+	if value := r.In.Header.Get(name); value != "" {
+		r.Out.Header.Set(name, value)
 	}
 }
 

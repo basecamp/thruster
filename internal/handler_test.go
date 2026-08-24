@@ -417,6 +417,23 @@ func TestHandlerSetsFreshXRequestIDOnCachedResponses(t *testing.T) {
 	assert.NotEqual(t, firstID, secondID)
 }
 
+func TestHandlerRestoresItsHeadersNamedInConnectionHeader(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.NotEmpty(t, r.Header.Get("X-Request-ID"), "X-Request-ID header should be present")
+		assert.NotEmpty(t, r.Header.Get("X-Request-Start"), "X-Request-Start header should be present")
+	}))
+	defer upstream.Close()
+
+	h := NewHandler(handlerOptions(upstream.URL))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/", nil)
+	r.Header.Set("Connection", "X-Request-ID, X-Request-Start")
+	h.ServeHTTP(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
 func TestHandlerAllowsFlushingTheResponseBody(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
