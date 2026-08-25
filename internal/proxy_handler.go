@@ -38,7 +38,7 @@ func ProxyErrorHandler(badGatewayPage string) func(w http.ResponseWriter, r *htt
 		slog.Info("Unable to proxy request", "request_id", loggableRequestID(r), "path", r.URL.Path, "error", err)
 
 		if isRequestEntityTooLarge(err) {
-			w.WriteHeader(http.StatusRequestEntityTooLarge)
+			serveError(w, http.StatusRequestEntityTooLarge)
 			return
 		}
 
@@ -47,7 +47,7 @@ func ProxyErrorHandler(badGatewayPage string) func(w http.ResponseWriter, r *htt
 			w.WriteHeader(http.StatusBadGateway)
 			_, _ = w.Write(content)
 		} else {
-			w.WriteHeader(http.StatusBadGateway)
+			serveError(w, http.StatusBadGateway)
 		}
 	}
 }

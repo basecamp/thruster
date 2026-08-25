@@ -154,12 +154,12 @@ func (s *Server) httpRedirectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if host, err = idna.Lookup.ToASCII(host); err != nil {
-		http.Error(w, http.StatusText(http.StatusMisdirectedRequest), http.StatusMisdirectedRequest)
+		serveError(w, http.StatusMisdirectedRequest)
 		return
 	}
 
 	if s.manager.HostPolicy(r.Context(), host) != nil {
-		http.Error(w, http.StatusText(http.StatusMisdirectedRequest), http.StatusMisdirectedRequest)
+		serveError(w, http.StatusMisdirectedRequest)
 		return
 	}
 
