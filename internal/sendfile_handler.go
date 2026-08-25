@@ -3,12 +3,16 @@ package internal
 import (
 	"bufio"
 	"errors"
+	"io/fs"
 	"log/slog"
 	"net"
 	"net/http"
 	"os"
 	"strconv"
+	"syscall"
 )
+
+var errNotRegularFile = errors.New("not a regular file")
 
 type SendfileHandler struct {
 	enabled bool
@@ -93,27 +97,52 @@ func (w *sendfileWriter) sendingFilename() string {
 func (w *sendfileWriter) serveFile(filename string) {
 	slog.Debug("X-Sendfile sending file", "request_id", loggableRequestID(w.r), "path", filename)
 
-	w.setContentLength(filename)
-	http.ServeFile(w.w, w.r, filename)
+	f, err := os.Open(filename)
+	if err != nil {
+		w.serveFileError(filename, err)
+		return
+	}
+	defer f.Close()
+
+	fi, err := f.Stat()
+	if err != nil {
+		w.serveFileError(filename, err)
+		return
+	}
+
+	if !fi.Mode().IsRegular() {
+		w.serveFileError(filename, errNotRegularFile)
+		return
+	}
+
+	w.w.Header().Del("Content-Length")
+
+	http.ServeContent(&contentLengthWriter{w.w, fi.Size()}, w.r, fi.Name(), fi.ModTime(), f)
 }
 
-func (w *sendfileWriter) setContentLength(filename string) {
-	// In most cases, `http.ServeFile` will set this for us. However, it will not
-	// set it if the response also has a `Content-Encoding`.
-	// (https://github.com/golang/go/commit/fdc21f3eafe94490e55e0bf018490b3aa9ba2383)
-	//
-	// If we don't set (or at least clear) the header in that case, we'll pass
-	// through the `Content-Length` of the upstream's response, which can lead to
-	// us serving an incomplete response.
-	//
-	// In particular, this happens when Rails is serving a gzipped asset via
-	// `X-Sendfile`, which it does using `Content-Encoding: gzip` and
-	// `Content-Length: 0`.
+func (w *sendfileWriter) serveFileError(filename string, err error) {
+	slog.Info("Unable to serve X-Sendfile file", "request_id", loggableRequestID(w.r), "path", w.r.URL.Path, "file", filename, "error", err)
 
-	fi, err := os.Stat(filename)
-	if err != nil {
-		w.w.Header().Del("Content-Length")
-	} else {
-		w.w.Header().Set("Content-Length", strconv.FormatInt(fi.Size(), 10))
+	status := http.StatusInternalServerError
+	switch {
+	case errors.Is(err, fs.ErrNotExist), errors.Is(err, syscall.ENOTDIR), errors.Is(err, errNotRegularFile):
+		status = http.StatusNotFound
+	case errors.Is(err, fs.ErrPermission):
+		status = http.StatusForbidden
 	}
+
+	serveError(w.w, status)
+}
+
+type contentLengthWriter struct {
+	http.ResponseWriter
+	size int64
+}
+
+func (w *contentLengthWriter) WriteHeader(code int) {
+	if code == http.StatusOK && w.Header().Get("Content-Length") == "" {
+		w.Header().Set("Content-Length", strconv.FormatInt(w.size, 10))
+	}
+
+	w.ResponseWriter.WriteHeader(code)
 }
