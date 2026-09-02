@@ -1,4 +1,4 @@
-.PHONY: build dist test bench clean
+.PHONY: build dist test bench check clean
 
 PLATFORMS = linux darwin
 ARCHITECTURES = amd64 arm64
@@ -24,3 +24,7 @@ bench:
 
 clean:
 	rm -rf bin dist
+
+check:
+	go vet ./...
+	go tool govulncheck ./...
