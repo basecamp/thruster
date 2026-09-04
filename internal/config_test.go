@@ -106,6 +106,7 @@ func TestConfig_defaults(t *testing.T) {
 	assert.Equal(t, defaultCacheSize, c.CacheSizeBytes)
 	assert.Equal(t, slog.LevelInfo, c.LogLevel)
 	assert.Equal(t, false, c.H2CEnabled)
+	assert.Equal(t, 30*time.Second, c.HttpDrainTimeout)
 }
 
 func TestConfig_override_defaults_with_env_vars(t *testing.T) {
@@ -113,6 +114,7 @@ func TestConfig_override_defaults_with_env_vars(t *testing.T) {
 	usingEnvVar(t, "TARGET_PORT", "4000")
 	usingEnvVar(t, "CACHE_SIZE", "256")
 	usingEnvVar(t, "HTTP_READ_TIMEOUT", "5")
+	usingEnvVar(t, "HTTP_DRAIN_TIMEOUT", "10")
 	usingEnvVar(t, "X_SENDFILE_ENABLED", "0")
 	usingEnvVar(t, "GZIP_COMPRESSION_ENABLED", "0")
 	usingEnvVar(t, "DEBUG", "1")
@@ -128,6 +130,7 @@ func TestConfig_override_defaults_with_env_vars(t *testing.T) {
 	assert.Equal(t, 4000, c.TargetPort)
 	assert.Equal(t, 256, c.CacheSizeBytes)
 	assert.Equal(t, 5*time.Second, c.HttpReadTimeout)
+	assert.Equal(t, 10*time.Second, c.HttpDrainTimeout)
 	assert.Equal(t, false, c.XSendfileEnabled)
 	assert.Equal(t, false, c.GzipCompressionEnabled)
 	assert.Equal(t, slog.LevelDebug, c.LogLevel)
