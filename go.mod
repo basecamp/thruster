@@ -5,7 +5,7 @@ go 1.27.1
 require (
 	github.com/klauspost/compress v1.20.0
 	github.com/stretchr/testify v1.12.1
-	golang.org/x/crypto v0.55.0
+	golang.org/x/crypto v0.56.0
 	golang.org/x/net v0.58.0
 )
 
