@@ -1,8 +1,6 @@
 package internal
 
 import (
-	"context"
-	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -11,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/net/http2"
 )
 
 func TestServerDefaultProtocols(t *testing.T) {
@@ -77,17 +74,10 @@ func makeRoundTripH2cRequest(t *testing.T, h2cEnabled bool) (*http.Response, err
 	require.NoError(t, err)
 	go func() { assert.NoError(t, server.Serve(listener)) }()
 
+	protocols := new(http.Protocols)
+	protocols.SetUnencryptedHTTP2(true)
 	client := http.Client{
-		// Force the http.Client to use an http/2 connection over cleartext.
-		Transport: &http2.Transport{
-			// Allow non-TLS requests.
-			AllowHTTP: true,
-			// When dialing, ignore the TLS config.
-			DialTLSContext: func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
-				var d net.Dialer
-				return d.DialContext(ctx, network, addr)
-			},
-		},
+		Transport: &http.Transport{Protocols: protocols},
 	}
 
 	return client.Get(fmt.Sprintf("http://%s/", listener.Addr()))
