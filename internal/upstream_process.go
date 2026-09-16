@@ -2,10 +2,8 @@ package internal
 
 import (
 	"errors"
-	"log/slog"
 	"os"
 	"os/exec"
-	"os/signal"
 	"syscall"
 )
 
@@ -33,7 +31,6 @@ func (p *UpstreamProcess) Run() (int, error) {
 
 	p.Started <- struct{}{}
 
-	go p.handleSignals()
 	err = p.cmd.Wait()
 
 	return p.handleExitCode(err)
@@ -41,15 +38,6 @@ func (p *UpstreamProcess) Run() (int, error) {
 
 func (p *UpstreamProcess) Signal(sig os.Signal) error {
 	return p.cmd.Process.Signal(sig)
-}
-
-func (p *UpstreamProcess) handleSignals() {
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
-
-	sig := <-ch
-	slog.Info("Relaying signal to upstream process", "signal", sig.String())
-	_ = p.Signal(sig)
 }
 
 func (p *UpstreamProcess) handleExitCode(err error) (int, error) {
