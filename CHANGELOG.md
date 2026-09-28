@@ -1,3 +1,9 @@
+## v0.1.27 / 2026-09-28
+
+* Update dependencies (#154)
+* Bump golang.org/x/crypto to v0.56.0 (#152)
+* Build with Go 1.27.1, update dependencies, add make check (#150)
+
 ## v0.1.26 / 2026-08-24
 
 * Add X-Request-ID header to requests and logs (#148)
