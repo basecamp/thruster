@@ -1,3 +1,26 @@
+## v0.1.26 / 2026-08-24
+
+* Add X-Request-ID header to requests and logs (#148)
+* Build with Go 1.27.0 (#147)
+* Build with Go 1.26.6 (#145)
+
+## v0.1.25 / 2026-08-11
+
+* Bypass all uncacheable requests (#142)
+
+## v0.1.24 / 2026-08-11
+
+* Use struct types as cache keys
+
+## v0.1.23 / 2026-07-16
+
+* Build with Go 1.26.5 (#140)
+
+## v0.1.22 / 2026-06-29
+
+* Build with Go 1.26.4
+* Exclude image types from compression (#137)
+
 ## v0.1.21 / 2026-05-17
 
 * Build with Go 1.26.3

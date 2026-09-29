@@ -91,7 +91,7 @@ func (w *sendfileWriter) sendingFilename() string {
 }
 
 func (w *sendfileWriter) serveFile(filename string) {
-	slog.Debug("X-Sendfile sending file", "path", filename)
+	slog.Debug("X-Sendfile sending file", "request_id", loggableRequestID(w.r), "path", filename)
 
 	w.setContentLength(filename)
 	http.ServeFile(w.w, w.r, filename)

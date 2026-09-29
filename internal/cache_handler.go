@@ -6,11 +6,27 @@ import (
 	"time"
 )
 
-type CacheKey uint64
+const maxCacheableKeySize = 8 * KB
+
+type RequestKey struct {
+	Method string
+	Host   string
+	Path   string
+	Query  string
+	Vary   string
+}
+
+func (k RequestKey) size() int {
+	return len(k.Method) + len(k.Host) + len(k.Path) + len(k.Query) + len(k.Vary)
+}
+
+func (k RequestKey) isCacheable() bool {
+	return k.size() <= maxCacheableKeySize
+}
 
 type Cache interface {
-	Get(key CacheKey) ([]byte, bool)
-	Set(key CacheKey, value []byte, expiresAt time.Time)
+	Get(key RequestKey) ([]byte, bool)
+	Set(key RequestKey, value []byte, expiresAt time.Time)
 }
 
 type CacheHandler struct {
@@ -28,6 +44,11 @@ func NewCacheHandler(cache Cache, maxBodySize int, next http.Handler) *CacheHand
 }
 
 func (h *CacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if !h.shouldCacheRequest(r) {
+		h.bypassCache(w, r)
+		return
+	}
+
 	variant := NewVariant(r)
 	response, key, found := h.fetchFromCache(r, variant)
 
@@ -43,10 +64,8 @@ func (h *CacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !h.shouldCacheRequest(r) {
-		slog.Debug("Bypassing cache for request", "path", r.URL.Path, "method", r.Method)
-		w.Header().Set("X-Cache", "bypass")
-		h.next.ServeHTTP(w, r)
+	if !key.isCacheable() {
+		h.bypassCache(w, r)
 		return
 	}
 
@@ -60,24 +79,34 @@ func (h *CacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		encoded, err := cr.ToBuffer()
 		if err != nil {
-			slog.Error("Failed to encode response for caching", "path", r.URL.Path, "error", err)
+			slog.Error("Failed to encode response for caching", "request_id", loggableRequestID(r), "path", r.URL.Path, "error", err)
 		} else {
 			h.cache.Set(key, encoded, expires)
-			slog.Debug("Added response to cache", "path", r.URL.Path, "key", key, "expires", expires, "size", len(encoded))
+			slog.Debug("Added response to cache", "request_id", loggableRequestID(r), "path", r.URL.Path, "expires", expires, "size", len(encoded))
 		}
 	}
 }
 
 // Private
 
-func (h *CacheHandler) fetchFromCache(r *http.Request, variant *Variant) (CacheableResponse, CacheKey, bool) {
+func (h *CacheHandler) bypassCache(w http.ResponseWriter, r *http.Request) {
+	slog.Debug("Bypassing cache for request", "request_id", loggableRequestID(r), "path", r.URL.Path, "method", r.Method)
+	w.Header().Set("X-Cache", "bypass")
+	h.next.ServeHTTP(w, r)
+}
+
+func (h *CacheHandler) fetchFromCache(r *http.Request, variant *Variant) (CacheableResponse, RequestKey, bool) {
 	key := variant.CacheKey()
+	if !key.isCacheable() {
+		return CacheableResponse{}, key, false
+	}
+
 	cached, found := h.cache.Get(key)
 
 	if found {
 		response, err := CacheableResponseFromBuffer(cached)
 		if err != nil {
-			slog.Error("Failed to decode cached response", "path", r.URL.Path, "error", err)
+			slog.Error("Failed to decode cached response", "request_id", loggableRequestID(r), "path", r.URL.Path, "error", err)
 			return CacheableResponse{}, key, false
 		}
 

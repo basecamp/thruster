@@ -32,12 +32,14 @@ func (h *LoggingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	reqContent := r.Header.Get("Content-Type")
 	respContent := writer.Header().Get("Content-Type")
 	cache := writer.Header().Get("X-Cache")
+	requestID := loggableRequestID(r)
 	remoteAddr := r.Header.Get("X-Forwarded-For")
 	if remoteAddr == "" {
 		remoteAddr = r.RemoteAddr
 	}
 
 	h.logger.Info("Request",
+		"request_id", requestID,
 		"path", r.URL.Path,
 		"status", writer.statusCode,
 		"dur", elapsed.Milliseconds(),

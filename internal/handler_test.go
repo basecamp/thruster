@@ -6,8 +6,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strconv"
 	"testing"
+	"uuid"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -80,12 +83,12 @@ func TestHandlerGzipCompression_is_not_applied_when_not_requested(t *testing.T) 
 }
 
 func TestHandlerGzipCompression_does_not_compress_images(t *testing.T) {
-	fixtureLength := strconv.FormatInt(fixtureLength("image.jpg"), 10)
+	fixtureLength := strconv.FormatInt(fixtureLength("image.png"), 10)
 
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "image/jpg")
+		w.Header().Set("Content-Type", "image/png")
 		w.Header().Set("Content-Length", fixtureLength)
-		_, _ = w.Write(fixtureContent("image.jpg"))
+		_, _ = w.Write(fixtureContent("image.png"))
 	}))
 	defer upstream.Close()
 
@@ -97,7 +100,7 @@ func TestHandlerGzipCompression_does_not_compress_images(t *testing.T) {
 	h.ServeHTTP(w, r)
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Header().Get("Content-Type"), "image/jpg")
+	assert.Contains(t, w.Header().Get("Content-Type"), "image/png")
 	assert.NotEqual(t, "gzip", w.Header().Get("Content-Encoding"))
 	assert.Equal(t, fixtureLength, w.Header().Get("Content-Length"))
 }
@@ -123,6 +126,35 @@ func TestHandlerGzipCompression_when_sendfile(t *testing.T) {
 
 	transferredSize, _ := strconv.ParseInt(w.Header().Get("Content-Length"), 10, 64)
 	assert.Less(t, transferredSize, fixtureLength("loremipsum.txt"))
+}
+
+func TestHandlerGzipCompression_does_not_compress_sendfile_png(t *testing.T) {
+	dir := t.TempDir()
+	fileContent := bytes.Repeat([]byte("A"), 2000)
+	filename := filepath.Join(dir, "image.png")
+	if !assert.NoError(t, os.WriteFile(filename, fileContent, 0644)) {
+		return
+	}
+
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "X-Sendfile", r.Header.Get("X-Sendfile-Type"))
+
+		w.Header().Set("X-Sendfile", filename)
+	}))
+	defer upstream.Close()
+
+	h := NewHandler(handlerOptions(upstream.URL))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/", nil)
+	r.Header.Set("Accept-Encoding", "gzip")
+	h.ServeHTTP(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "image/png", w.Header().Get("Content-Type"))
+	assert.Empty(t, w.Header().Get("Content-Encoding"))
+	assert.Equal(t, strconv.Itoa(len(fileContent)), w.Header().Get("Content-Length"))
+	assert.Equal(t, fileContent, w.Body.Bytes())
 }
 
 func TestHandler_do_not_request_compressed_responses_from_upstream_unless_client_does(t *testing.T) {
@@ -276,6 +308,127 @@ func TestHandlerAddsXRequestStartHeader(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/", nil)
+	h.ServeHTTP(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestHandlerAddsXRequestIDHeader(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		header := r.Header.Get("X-Request-ID")
+		assert.NotEmpty(t, header, "X-Request-ID header should be present")
+		_, err := uuid.Parse(header)
+		assert.NoError(t, err, "X-Request-ID header should be a UUID")
+	}))
+	defer upstream.Close()
+
+	h := NewHandler(handlerOptions(upstream.URL))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/", nil)
+	h.ServeHTTP(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestHandlerForwardsExistingXRequestIDHeaderWhenForwardingEnabled(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "id-from-downstream", r.Header.Get("X-Request-ID"))
+	}))
+	defer upstream.Close()
+
+	h := NewHandler(handlerOptions(upstream.URL))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/", nil)
+	r.Header.Set("X-Request-ID", "id-from-downstream")
+	h.ServeHTTP(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestHandlerReplacesExistingXRequestIDHeaderWhenForwardingNotEnabled(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		header := r.Header.Get("X-Request-ID")
+		assert.NotEqual(t, "id-from-client", header)
+		_, err := uuid.Parse(header)
+		assert.NoError(t, err, "X-Request-ID header should be a UUID")
+	}))
+	defer upstream.Close()
+
+	options := handlerOptions(upstream.URL)
+	options.forwardHeaders = false
+	h := NewHandler(options)
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/", nil)
+	r.Header.Set("X-Request-ID", "id-from-client")
+	h.ServeHTTP(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestHandlerSetsXRequestIDResponseHeaderIgnoringUpstreamEcho(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Request-ID", "id-from-upstream")
+	}))
+	defer upstream.Close()
+
+	h := NewHandler(handlerOptions(upstream.URL))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/", nil)
+	h.ServeHTTP(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	values := w.Header().Values("X-Request-ID")
+	assert.Len(t, values, 1)
+	_, err := uuid.Parse(values[0])
+	assert.NoError(t, err)
+}
+
+func TestHandlerSetsFreshXRequestIDOnCachedResponses(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=60")
+		w.Header().Set("X-Request-ID", r.Header.Get("X-Request-ID"))
+		_, _ = w.Write([]byte("cacheable response"))
+	}))
+	defer upstream.Close()
+
+	h := NewHandler(handlerOptions(upstream.URL))
+
+	serveRequest := func() (string, string) {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/", nil)
+		h.ServeHTTP(w, r)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		return w.Header().Get("X-Cache"), w.Header().Get("X-Request-ID")
+	}
+
+	firstCache, firstID := serveRequest()
+	secondCache, secondID := serveRequest()
+
+	assert.Equal(t, "miss", firstCache)
+	assert.Equal(t, "hit", secondCache)
+	assert.NotEmpty(t, firstID)
+	assert.NotEmpty(t, secondID)
+	assert.NotEqual(t, firstID, secondID)
+}
+
+func TestHandlerRestoresItsHeadersNamedInConnectionHeader(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.NotEmpty(t, r.Header.Get("X-Request-ID"), "X-Request-ID header should be present")
+		assert.NotEmpty(t, r.Header.Get("X-Request-Start"), "X-Request-Start header should be present")
+	}))
+	defer upstream.Close()
+
+	h := NewHandler(handlerOptions(upstream.URL))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/", nil)
+	r.Header.Set("Connection", "X-Request-ID, X-Request-Start")
 	h.ServeHTTP(w, r)
 
 	assert.Equal(t, http.StatusOK, w.Code)

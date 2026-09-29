@@ -28,10 +28,12 @@ func TestLoggingHandler(t *testing.T) {
 	req.Header.Set("X-Forwarded-For", "192.168.1.1")
 	req.Header.Set("User-Agent", "Robot/1")
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Request-ID", "test-request-id")
 
 	handler.ServeHTTP(httptest.NewRecorder(), req)
 
 	logline := struct {
+		RequestID         string `json:"request_id"`
 		Path              string `json:"path"`
 		Method            string `json:"method"`
 		Status            int    `json:"status"`
@@ -48,6 +50,7 @@ func TestLoggingHandler(t *testing.T) {
 	err := json.NewDecoder(strings.NewReader(out.String())).Decode(&logline)
 	require.NoError(t, err)
 
+	assert.Equal(t, "test-request-id", logline.RequestID)
 	assert.Equal(t, "/somepath", logline.Path)
 	assert.Equal(t, "POST", logline.Method)
 	assert.Equal(t, http.StatusCreated, logline.Status)
