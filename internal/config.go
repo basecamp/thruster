@@ -40,6 +40,9 @@ const (
 
 	defaultGzipCompressionDisableOnAuth = false
 	defaultGzipCompressionJitter        = 32
+
+	defaultWaitForTargetPort        = false
+	defaultWaitForTargetPortTimeout = 60 * time.Second
 )
 
 type Config struct {
@@ -69,6 +72,9 @@ type Config struct {
 	HttpWriteTimeout time.Duration
 
 	H2CEnabled bool
+
+	WaitForTargetPort        bool
+	WaitForTargetPortTimeout time.Duration
 
 	ForwardHeaders bool
 
@@ -113,6 +119,9 @@ func NewConfig() (*Config, error) {
 		HttpWriteTimeout: getEnvDuration("HTTP_WRITE_TIMEOUT", defaultHttpWriteTimeout),
 
 		H2CEnabled: getEnvBool("H2C_ENABLED", defaultH2CEnabled),
+
+		WaitForTargetPort:        getEnvBool("WAIT_FOR_TARGET_PORT", defaultWaitForTargetPort),
+		WaitForTargetPortTimeout: getEnvDuration("WAIT_FOR_TARGET_PORT_TIMEOUT", defaultWaitForTargetPortTimeout),
 
 		LogLevel:    logLevel,
 		LogRequests: getEnvBool("LOG_REQUESTS", defaultLogRequests),
