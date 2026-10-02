@@ -106,6 +106,7 @@ func TestConfig_defaults(t *testing.T) {
 	assert.Equal(t, defaultCacheSize, c.CacheSizeBytes)
 	assert.Equal(t, slog.LevelInfo, c.LogLevel)
 	assert.Equal(t, false, c.H2CEnabled)
+	assert.Equal(t, false, c.EncodeQuerySemicolons)
 }
 
 func TestConfig_override_defaults_with_env_vars(t *testing.T) {
@@ -121,6 +122,7 @@ func TestConfig_override_defaults_with_env_vars(t *testing.T) {
 	usingEnvVar(t, "H2C_ENABLED", "true")
 	usingEnvVar(t, "GZIP_COMPRESSION_DISABLE_ON_AUTH", "true")
 	usingEnvVar(t, "GZIP_COMPRESSION_JITTER", "64")
+	usingEnvVar(t, "ENCODE_QUERY_SEMICOLONS", "true")
 
 	c, err := NewConfig()
 	require.NoError(t, err)
@@ -136,6 +138,7 @@ func TestConfig_override_defaults_with_env_vars(t *testing.T) {
 	assert.Equal(t, true, c.H2CEnabled)
 	assert.Equal(t, true, c.GzipCompressionDisableOnAuth)
 	assert.Equal(t, 64, c.GzipCompressionJitter)
+	assert.Equal(t, true, c.EncodeQuerySemicolons)
 }
 
 func TestConfig_override_defaults_with_env_vars_using_prefix(t *testing.T) {
