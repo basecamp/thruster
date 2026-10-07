@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"net"
 	"net/http"
-	"strings"
+	"slices"
 
 	"github.com/klauspost/compress/gzhttp"
 )
@@ -23,9 +23,9 @@ func NewCompressionGuardHandler(next http.Handler) http.Handler {
 }
 
 func hasUserSpecificRequestHeaders(r *http.Request) bool {
-	return r.Header.Get("Cookie") != "" ||
-		r.Header.Get("Authorization") != "" ||
-		r.Header.Get("X-Csrf-Token") != ""
+	return len(r.Header.Values("Cookie")) > 0 ||
+		len(r.Header.Values("Authorization")) > 0 ||
+		len(r.Header.Values("X-Csrf-Token")) > 0
 }
 
 type compressionGuardResponseWriter struct {
@@ -34,6 +34,11 @@ type compressionGuardResponseWriter struct {
 }
 
 func (w *compressionGuardResponseWriter) WriteHeader(statusCode int) {
+	if statusCode >= 100 && statusCode < 200 {
+		w.ResponseWriter.WriteHeader(statusCode)
+		return
+	}
+
 	if w.wroteHeader {
 		return
 	}
@@ -55,28 +60,16 @@ func (w *compressionGuardResponseWriter) Write(b []byte) (int, error) {
 }
 
 func hasUserSpecificResponseHeaders(h http.Header) bool {
-	if h.Get("Set-Cookie") != "" {
+	if len(h.Values("Set-Cookie")) > 0 {
 		return true
 	}
 
-	cacheControl := strings.ToLower(h.Get("Cache-Control"))
-	for directive := range strings.SplitSeq(cacheControl, ",") {
-		dir := strings.TrimSpace(directive)
-		// Strip any value (e.g. private="Set-Cookie") before comparison.
-		dirName := strings.SplitN(dir, "=", 2)[0]
-		if dirName == "private" || dirName == "no-store" {
-			return true
-		}
+	cc := parseCacheControl(h)
+	if cc.malformed || cc.has("private") || cc.has("no-store") {
+		return true
 	}
 
-	vary := h.Get("Vary")
-	for token := range strings.SplitSeq(vary, ",") {
-		if strings.EqualFold(strings.TrimSpace(token), "cookie") {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(varyNames(h), "Cookie")
 }
 
 // Flush implements http.Flusher

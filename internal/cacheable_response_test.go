@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,8 +21,98 @@ func TestCacheableResponse_cache_headers(t *testing.T) {
 			cacheable:    true,
 		},
 
-		"public, with s-max-age": {
+		"public, with s-maxage": {
+			cacheControl: "public, s-maxage=60",
+			cacheable:    true,
+		},
+
+		"public, with misspelled s-max-age": {
 			cacheControl: "public, s-max-age=60",
+			cacheable:    false,
+		},
+
+		"public, with s-maxage of zero and a max-age": {
+			cacheControl: "public, s-maxage=0, max-age=60",
+			cacheable:    false,
+		},
+
+		"public, with quoted max-age": {
+			cacheControl: `public, max-age="60"`,
+			cacheable:    true,
+		},
+
+		"public, with doubly quoted max-age": {
+			cacheControl: `public, max-age=""60""`,
+			cacheable:    false,
+		},
+
+		"public, with half quoted max-age": {
+			cacheControl: `public, max-age="60`,
+			cacheable:    false,
+		},
+
+		"public, with max-age, but also no-store": {
+			cacheControl: "public, max-age=60, no-store",
+			cacheable:    false,
+		},
+
+		"public, with max-age, but also private": {
+			cacheControl: "public, private, max-age=60",
+			cacheable:    false,
+		},
+
+		"public, with max-age, but also private with a field name": {
+			cacheControl: `public, private="Set-Cookie", max-age=60`,
+			cacheable:    false,
+		},
+
+		"public, with max-age, in mixed case": {
+			cacheControl: "Public, Max-Age=60",
+			cacheable:    true,
+		},
+
+		"public inside a quoted extension value": {
+			cacheControl: `ext="a, public, b", max-age=60`,
+			cacheable:    false,
+		},
+
+		"max-age inside a quoted extension value": {
+			cacheControl: `public, ext="a, max-age=60"`,
+			cacheable:    false,
+		},
+
+		"public, with duplicate max-age": {
+			cacheControl: "public, max-age=0, max-age=600",
+			cacheable:    false,
+		},
+
+		"public, with negative max-age that overflows a duration": {
+			cacheControl: "public, max-age=-10000000000",
+			cacheable:    false,
+		},
+
+		"public, with max-age too large for a duration": {
+			cacheControl: "public, max-age=19000000000",
+			cacheable:    true,
+		},
+
+		"public, with non-numeric max-age": {
+			cacheControl: "public, max-age=soon",
+			cacheable:    false,
+		},
+
+		"public, with signed max-age": {
+			cacheControl: "public, max-age=+60",
+			cacheable:    false,
+		},
+
+		"public, with an unterminated quoted value hiding no-store": {
+			cacheControl: `public, max-age=60, ext="unterminated, no-store`,
+			cacheable:    false,
+		},
+
+		"public, with an escaped quote inside a quoted value": {
+			cacheControl: `public, ext="a \" b", max-age=60`,
 			cacheable:    true,
 		},
 
@@ -63,6 +154,59 @@ func TestCacheableResponse_cache_headers(t *testing.T) {
 	}
 }
 
+func TestCacheableResponse_cache_headers_across_lines(t *testing.T) {
+	tests := map[string]struct {
+		cacheControl []string
+		cacheable    bool
+	}{
+		"public and max-age on separate lines": {
+			cacheControl: []string{"public", "max-age=60"},
+			cacheable:    true,
+		},
+
+		"no-store on a later line": {
+			cacheControl: []string{"public, max-age=60", "no-store"},
+			cacheable:    false,
+		},
+
+		"private on a later line": {
+			cacheControl: []string{"public, max-age=60", "private"},
+			cacheable:    false,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			cr := NewCacheableResponse(rec, 1024)
+			cr.Header()["Cache-Control"] = test.cacheControl
+
+			cacheable, _ := cr.CacheStatus()
+			assert.Equal(t, test.cacheable, cacheable)
+		})
+	}
+}
+
+func TestCacheableResponse_caps_very_long_lifetimes(t *testing.T) {
+	rec := httptest.NewRecorder()
+	cr := NewCacheableResponse(rec, 1024)
+	cr.Header().Set("Cache-Control", "public, max-age=19000000000")
+
+	cacheable, expires := cr.CacheStatus()
+	assert.True(t, cacheable)
+	assert.WithinDuration(t, time.Now().Add(maxCacheLifetime), expires, time.Second)
+}
+
+func TestCacheableResponse_s_maxage_takes_precedence_over_max_age(t *testing.T) {
+	rec := httptest.NewRecorder()
+	cr := NewCacheableResponse(rec, 1024)
+	cr.Header().Set("Cache-Control", "public, s-maxage=10, max-age=3600")
+
+	cacheable, expires := cr.CacheStatus()
+	assert.True(t, cacheable)
+	assert.WithinDuration(t, time.Now().Add(10*time.Second), expires, time.Second)
+}
+
 func TestCacheableResponse_does_not_cache_items_with_wildcard_vary_header(t *testing.T) {
 	rec := httptest.NewRecorder()
 	cr := NewCacheableResponse(rec, 1024)
@@ -71,6 +215,31 @@ func TestCacheableResponse_does_not_cache_items_with_wildcard_vary_header(t *tes
 
 	cacheable, _ := cr.CacheStatus()
 	assert.False(t, cacheable)
+}
+
+func TestCacheableResponse_does_not_cache_items_with_wildcard_vary_on_a_later_line(t *testing.T) {
+	rec := httptest.NewRecorder()
+	cr := NewCacheableResponse(rec, 1024)
+	cr.Header().Set("Cache-Control", "public, max-age=60")
+	cr.Header().Add("Vary", "Accept")
+	cr.Header().Add("Vary", "*")
+
+	cacheable, _ := cr.CacheStatus()
+	assert.False(t, cacheable)
+}
+
+func TestCacheableResponse_does_not_cache_items_that_vary_on_proxy_set_headers(t *testing.T) {
+	for _, name := range []string{"X-Forwarded-For", "X-Forwarded-Host", "X-Forwarded-Proto", "x-forwarded-for"} {
+		t.Run(name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			cr := NewCacheableResponse(rec, 1024)
+			cr.Header().Set("Cache-Control", "public, max-age=60")
+			cr.Header().Set("Vary", "Accept, "+name)
+
+			cacheable, _ := cr.CacheStatus()
+			assert.False(t, cacheable)
+		})
+	}
 }
 
 func TestCacheableResponse_does_not_cache_items_where_body_too_large(t *testing.T) {
@@ -259,6 +428,16 @@ func TestCacheableResponse_does_not_scrub_cookies_from_non_cacheable_responses(t
 	assert.Equal(t, "user=1234; Path=/; HttpOnly", w.Header().Get("Set-Cookie"))
 }
 
+func TestCacheableResponse_does_not_scrub_cookies_from_no_store_responses(t *testing.T) {
+	rec := httptest.NewRecorder()
+	cr := NewCacheableResponse(rec, 1024)
+	cr.Header().Set("Cache-Control", "public, no-store, max-age=60")
+	cr.Header().Set("Set-Cookie", "user=1234; Path=/; HttpOnly")
+	cr.WriteHeader(http.StatusOK)
+
+	assert.Equal(t, "user=1234; Path=/; HttpOnly", rec.Header().Get("Set-Cookie"))
+}
+
 func TestCacheableResponse_serialization(t *testing.T) {
 	rec := httptest.NewRecorder()
 	cr := NewCacheableResponse(rec, 1024)
@@ -275,6 +454,37 @@ func TestCacheableResponse_serialization(t *testing.T) {
 	assert.Equal(t, cr.StatusCode, restored.StatusCode)
 	assert.Equal(t, cr.Header(), restored.Header())
 	assert.Equal(t, cr.Body, restored.Body)
+}
+
+func TestCacheableResponse_serialization_of_variant_header(t *testing.T) {
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	r.Header["Accept"] = []string{"text/html", ""}
+
+	rec := httptest.NewRecorder()
+	cr := NewCacheableResponse(rec, 1024)
+	cr.Header().Set("Cache-Control", "public, max-age=60")
+	cr.Header().Set("Vary", "Accept, Cookie")
+	cr.WriteHeader(http.StatusOK)
+
+	variant := NewVariant(r)
+	variant.SetResponseHeader(cr.Header())
+	cr.VariantHeader = variant.VariantHeader()
+
+	saved, err := cr.ToBuffer()
+	assert.NoError(t, err)
+
+	restored, err := CacheableResponseFromBuffer(saved)
+	assert.NoError(t, err)
+
+	assert.Equal(t, http.Header{"Accept": []string{"text/html", ""}}, restored.VariantHeader)
+	assert.True(t, variant.Matches(restored.VariantHeader))
+
+	other := httptest.NewRequest(http.MethodGet, "/", nil)
+	other.Header["Accept"] = []string{"text/html", ""}
+	other.Header.Set("Cookie", "session=1")
+	otherVariant := NewVariant(other)
+	otherVariant.SetResponseHeader(cr.Header())
+	assert.False(t, otherVariant.Matches(restored.VariantHeader))
 }
 
 func TestStashingWriter_writing_within_limit(t *testing.T) {

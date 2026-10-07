@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -26,9 +27,9 @@ func TestCacheHandler_caching(t *testing.T) {
 			[]string{"miss", "hit", "hit"},
 			1,
 		},
-		"cacheable with s-max-age": {
+		"cacheable with s-maxage": {
 			httptest.NewRequest("GET", "http://example.com", nil),
-			"public, s-max-age=60",
+			"public, s-maxage=60",
 			[]string{"Hello 1", "Hello 1", "Hello 1"},
 			[]string{"miss", "hit", "hit"},
 			1,
@@ -36,6 +37,13 @@ func TestCacheHandler_caching(t *testing.T) {
 		"uncacheable response": {
 			httptest.NewRequest("GET", "http://example.com", nil),
 			"private",
+			[]string{"Hello 1", "Hello 2", "Hello 3"},
+			[]string{"miss", "miss", "miss"},
+			0,
+		},
+		"uncacheable response due to no-store": {
+			httptest.NewRequest("GET", "http://example.com", nil),
+			"public, no-store, max-age=60",
 			[]string{"Hello 1", "Hello 2", "Hello 3"},
 			[]string{"miss", "miss", "miss"},
 			0,
@@ -173,6 +181,115 @@ func TestCacheHandler_vary_header(t *testing.T) {
 	assert.Equal(t, "hit", resp.Header().Get("X-Cache"))
 }
 
+func TestCacheHandler_vary_header_across_lines(t *testing.T) {
+	for name, vary := range map[string][]string{
+		"accept first": {"Accept", "Cookie"},
+		"cookie first": {"Cookie", "Accept"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			cache := newTestCache()
+			handler := NewCacheHandler(cache, 1024, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header()["Vary"] = vary
+				w.Header().Set("Cache-Control", "public, max-age=600")
+				_, _ = w.Write([]byte(r.Header.Get("Cookie")))
+			}))
+
+			doReq := func(cookie string) *httptest.ResponseRecorder {
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "http://example.com", nil)
+				r.Header.Set("Accept", "text/html")
+				r.Header.Set("Cookie", cookie)
+				handler.ServeHTTP(w, r)
+				return w
+			}
+
+			resp := doReq("session=1")
+			assert.Equal(t, "session=1", resp.Body.String())
+			assert.Equal(t, "miss", resp.Header().Get("X-Cache"))
+
+			resp = doReq("session=2")
+			assert.Equal(t, "session=2", resp.Body.String())
+			assert.Equal(t, "miss", resp.Header().Get("X-Cache"))
+
+			resp = doReq("session=1")
+			assert.Equal(t, "session=1", resp.Body.String())
+			assert.Equal(t, "hit", resp.Header().Get("X-Cache"))
+		})
+	}
+}
+
+func TestCacheHandler_vary_header_with_duplicate_request_headers(t *testing.T) {
+	cache := newTestCache()
+	handler := NewCacheHandler(cache, 1024, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Vary", "Accept")
+		w.Header().Set("Cache-Control", "public, max-age=600")
+		_, _ = w.Write([]byte(strings.Join(r.Header.Values("Accept"), ", ")))
+	}))
+
+	doReq := func(accept ...string) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "http://example.com", nil)
+		r.Header["Accept"] = accept
+		handler.ServeHTTP(w, r)
+		return w
+	}
+
+	resp := doReq("text/html")
+	assert.Equal(t, "text/html", resp.Body.String())
+	assert.Equal(t, "miss", resp.Header().Get("X-Cache"))
+
+	resp = doReq("text/html", "application/json")
+	assert.Equal(t, "text/html, application/json", resp.Body.String())
+	assert.Equal(t, "miss", resp.Header().Get("X-Cache"))
+
+	resp = doReq("text/html")
+	assert.Equal(t, "text/html", resp.Body.String())
+	assert.Equal(t, "hit", resp.Header().Get("X-Cache"))
+
+	resp = doReq("text/html", "application/json")
+	assert.Equal(t, "text/html, application/json", resp.Body.String())
+	assert.Equal(t, "hit", resp.Header().Get("X-Cache"))
+}
+
+func TestCacheHandler_vary_header_that_changes_between_responses(t *testing.T) {
+	cache := newTestCache()
+	handler := NewCacheHandler(cache, 1024, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=600")
+		if r.Header.Get("Accept") == "application/json" {
+			w.Header().Set("Vary", "Accept")
+			_, _ = w.Write([]byte("json"))
+		} else {
+			w.Header().Set("Vary", "Cookie")
+			_, _ = w.Write([]byte(r.Header.Get("Cookie")))
+		}
+	}))
+
+	doReq := func(accept, cookie string) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "http://example.com", nil)
+		r.Header.Set("Accept", accept)
+		r.Header.Set("Cookie", cookie)
+		handler.ServeHTTP(w, r)
+		return w
+	}
+
+	resp := doReq("application/json", "user=alice")
+	assert.Equal(t, "json", resp.Body.String())
+	assert.Equal(t, "miss", resp.Header().Get("X-Cache"))
+
+	resp = doReq("text/html", "user=alice")
+	assert.Equal(t, "user=alice", resp.Body.String())
+	assert.Equal(t, "miss", resp.Header().Get("X-Cache"))
+
+	resp = doReq("text/html", "user=bob")
+	assert.Equal(t, "user=bob", resp.Body.String())
+	assert.Equal(t, "miss", resp.Header().Get("X-Cache"))
+
+	resp = doReq("text/html", "user=bob")
+	assert.Equal(t, "user=bob", resp.Body.String())
+	assert.Equal(t, "hit", resp.Header().Get("X-Cache"))
+}
+
 func TestCacheHandler_oversized_vary_key_is_not_cached(t *testing.T) {
 	cache := newTestCache()
 	handler := NewCacheHandler(cache, 1024, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -195,6 +312,23 @@ func TestCacheHandler_oversized_vary_key_is_not_cached(t *testing.T) {
 	resp = doReq(strings.Repeat("a", 9*KB))
 	assert.Equal(t, "bypass", resp.Header().Get("X-Cache"))
 	assert.Equal(t, 1, len(cache.items))
+}
+
+func TestCacheHandler_oversized_vary_key_is_not_cached_on_a_cold_cache(t *testing.T) {
+	cache := newTestCache()
+	handler := NewCacheHandler(cache, 16*KB, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Vary", "Accept")
+		w.Header().Set("Cache-Control", "public, max-age=600")
+		_, _ = w.Write([]byte("Hello"))
+	}))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "http://example.com", nil)
+	r.Header.Set("Accept", strings.Repeat("a", 9*KB))
+	handler.ServeHTTP(w, r)
+
+	assert.Equal(t, "miss", w.Header().Get("X-Cache"))
+	assert.Equal(t, 0, len(cache.items))
 }
 
 func TestCacheHandler_different_hosts(t *testing.T) {
@@ -302,6 +436,55 @@ func TestCacheHandler_upgrade_requests_bypass_the_cache(t *testing.T) {
 	handler.ServeHTTP(w, r)
 
 	assert.Equal(t, "bypass", w.Header().Get("X-Cache"))
+}
+
+func TestCacheHandler_requests_naming_headers_in_connection_bypass_the_cache(t *testing.T) {
+	cache := newTestCache()
+
+	handler := NewCacheHandler(cache, 1024, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=60")
+		w.Header().Set("Vary", "User-Agent")
+		_, _ = w.Write([]byte(r.Header.Get("User-Agent")))
+	}))
+
+	doReq := func(connection ...string) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/", nil)
+		r.Header.Set("User-Agent", "CommonBrowser")
+		r.Header["Connection"] = connection
+		handler.ServeHTTP(w, r)
+		return w
+	}
+
+	assert.Equal(t, "bypass", doReq("User-Agent").Header().Get("X-Cache"))
+	assert.Equal(t, "bypass", doReq("keep-alive, user-agent").Header().Get("X-Cache"))
+	assert.Equal(t, "bypass", doReq("keep-alive", "User-Agent").Header().Get("X-Cache"))
+	assert.Equal(t, 0, len(cache.items))
+
+	assert.Equal(t, "miss", doReq("keep-alive").Header().Get("X-Cache"))
+	assert.Equal(t, "hit", doReq("close").Header().Get("X-Cache"))
+	assert.Equal(t, "hit", doReq().Header().Get("X-Cache"))
+}
+
+func TestCacheHandler_requests_with_a_body_bypass_the_cache(t *testing.T) {
+	cache := newTestCache()
+
+	handler := NewCacheHandler(cache, 1024, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=60")
+		body, _ := io.ReadAll(r.Body)
+		_, _ = w.Write(body)
+	}))
+
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, httptest.NewRequest("GET", "/", strings.NewReader("poison")))
+	assert.Equal(t, "poison", w.Body.String())
+	assert.Equal(t, "bypass", w.Header().Get("X-Cache"))
+	assert.Equal(t, 0, len(cache.items))
+
+	w = httptest.NewRecorder()
+	handler.ServeHTTP(w, httptest.NewRequest("GET", "/", nil))
+	assert.Equal(t, "", w.Body.String())
+	assert.Equal(t, "miss", w.Header().Get("X-Cache"))
 }
 
 func BenchmarkCacheHandler_retrieving(b *testing.B) {

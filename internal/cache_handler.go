@@ -3,10 +3,14 @@ package internal
 import (
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 )
 
-const maxCacheableKeySize = 8 * KB
+const (
+	maxCacheableKeySize = 8 * KB
+	maxVariantLookups   = 2
+)
 
 type RequestKey struct {
 	Method string
@@ -52,16 +56,18 @@ func (h *CacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	variant := NewVariant(r)
 	response, key, found := h.fetchFromCache(r, variant)
 
-	if found {
+	for attempt := 0; found; attempt++ {
 		variant.SetResponseHeader(response.HttpHeader)
-		if !variant.Matches(response.VariantHeader) {
+		if variant.Matches(response.VariantHeader) {
+			response.WriteCachedResponse(w, r)
+			return
+		}
+
+		if attempt >= maxVariantLookups {
+			found = false
+		} else {
 			response, key, found = h.fetchFromCache(r, variant)
 		}
-	}
-
-	if found {
-		response.WriteCachedResponse(w, r)
-		return
 	}
 
 	if !key.isCacheable() {
@@ -75,6 +81,9 @@ func (h *CacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	cacheable, expires := cr.CacheStatus()
 	if cacheable {
 		variant.SetResponseHeader(cr.HttpHeader)
+		if !variant.CacheKey().isCacheable() {
+			return
+		}
 		cr.VariantHeader = variant.VariantHeader()
 
 		encoded, err := cr.ToBuffer()
@@ -118,8 +127,22 @@ func (h *CacheHandler) fetchFromCache(r *http.Request, variant *Variant) (Cachea
 
 func (h *CacheHandler) shouldCacheRequest(r *http.Request) bool {
 	allowedMethod := r.Method == http.MethodGet || r.Method == http.MethodHead
-	isUpgrade := r.Header.Get("Connection") == "Upgrade" || r.Header.Get("Upgrade") == "websocket"
+	isUpgrade := r.Header.Get("Upgrade") == "websocket"
 	isRange := r.Header.Get("Range") != ""
+	hasBody := r.ContentLength != 0
 
-	return allowedMethod && !isUpgrade && !isRange
+	return allowedMethod && !isUpgrade && !isRange && !hasBody && !h.connectionNamesOtherHeaders(r)
+}
+
+func (h *CacheHandler) connectionNamesOtherHeaders(r *http.Request) bool {
+	for _, line := range r.Header.Values("Connection") {
+		for option := range strings.SplitSeq(line, ",") {
+			switch strings.ToLower(strings.TrimSpace(option)) {
+			case "", "close", "keep-alive":
+			default:
+				return true
+			}
+		}
+	}
+	return false
 }

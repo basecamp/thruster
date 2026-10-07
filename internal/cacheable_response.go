@@ -7,18 +7,15 @@ import (
 	"log/slog"
 	"maps"
 	"net/http"
-	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 )
 
-var (
-	publicExp   = regexp.MustCompile(`\bpublic\b`)
-	noCacheExpt = regexp.MustCompile(`\bno-cache\b`)
-	sMaxAgeExp  = regexp.MustCompile(`\bs-max-age=(\d+)\b`)
-	maxAgeExp   = regexp.MustCompile(`\bmax-age=(\d+)\b`)
-)
+const maxCacheLifetime = time.Duration(1<<31-1) * time.Second
+
+var proxySetHeaders = []string{"X-Forwarded-For", "X-Forwarded-Host", "X-Forwarded-Proto"}
 
 type CacheableResponse struct {
 	StatusCode    int
@@ -93,30 +90,24 @@ func (c *CacheableResponse) CacheStatus() (bool, time.Time) {
 		return false, time.Time{}
 	}
 
-	if strings.Contains(c.HttpHeader.Get("Vary"), "*") {
+	for _, name := range varyNames(c.HttpHeader) {
+		if name == "*" || slices.Contains(proxySetHeaders, name) {
+			return false, time.Time{}
+		}
+	}
+
+	cc := parseCacheControl(c.HttpHeader)
+
+	if cc.malformed || !cc.has("public") || cc.has("private") || cc.has("no-store") || cc.has("no-cache") {
 		return false, time.Time{}
 	}
 
-	cc := c.HttpHeader.Get("Cache-Control")
-
-	if !publicExp.MatchString(cc) || noCacheExpt.MatchString(cc) {
+	lifetime, ok := cc.lifetime()
+	if !ok || lifetime <= 0 {
 		return false, time.Time{}
 	}
 
-	matches := sMaxAgeExp.FindStringSubmatch(cc)
-	if len(matches) != 2 {
-		matches = maxAgeExp.FindStringSubmatch(cc)
-	}
-	if len(matches) != 2 {
-		return false, time.Time{}
-	}
-
-	maxAge, err := strconv.Atoi(matches[1])
-	if err != nil || maxAge <= 0 {
-		return false, time.Time{}
-	}
-
-	return true, time.Now().Add(time.Duration(maxAge) * time.Second)
+	return true, time.Now().Add(lifetime)
 }
 
 func (c *CacheableResponse) WriteCachedResponse(w http.ResponseWriter, r *http.Request) {
@@ -167,6 +158,84 @@ func (c *CacheableResponse) scrubHeaders() {
 	if cacheable {
 		c.HttpHeader.Del("Set-Cookie")
 	}
+}
+
+type cacheControl struct {
+	directives map[string][]string
+	malformed  bool
+}
+
+func parseCacheControl(header http.Header) cacheControl {
+	cc := cacheControl{directives: map[string][]string{}}
+	for _, line := range header.Values("Cache-Control") {
+		parts, balanced := splitOutsideQuotes(line, ',')
+		if !balanced {
+			cc.malformed = true
+		}
+
+		for _, directive := range parts {
+			name, value, _ := strings.Cut(strings.TrimSpace(directive), "=")
+			name = strings.ToLower(strings.TrimSpace(name))
+			if name != "" {
+				cc.directives[name] = append(cc.directives[name], unquote(strings.TrimSpace(value)))
+			}
+		}
+	}
+	return cc
+}
+
+func (cc cacheControl) has(name string) bool {
+	_, ok := cc.directives[name]
+	return ok
+}
+
+func (cc cacheControl) lifetime() (time.Duration, bool) {
+	for _, name := range []string{"s-maxage", "max-age"} {
+		values, ok := cc.directives[name]
+		if !ok {
+			continue
+		}
+		if len(values) != 1 {
+			return 0, false
+		}
+
+		seconds, err := strconv.ParseUint(values[0], 10, 64)
+		if err != nil || seconds == 0 {
+			return 0, false
+		}
+		if seconds > uint64(maxCacheLifetime/time.Second) {
+			return maxCacheLifetime, true
+		}
+		return time.Duration(seconds) * time.Second, true
+	}
+
+	return 0, false
+}
+
+func unquote(value string) string {
+	if len(value) >= 2 && value[0] == '"' && value[len(value)-1] == '"' {
+		return value[1 : len(value)-1]
+	}
+	return value
+}
+
+func splitOutsideQuotes(s string, sep byte) (parts []string, balanced bool) {
+	start := 0
+	quoted := false
+
+	for i := 0; i < len(s); i++ {
+		switch {
+		case quoted && s[i] == '\\' && i+1 < len(s):
+			i++
+		case s[i] == '"':
+			quoted = !quoted
+		case s[i] == sep && !quoted:
+			parts = append(parts, s[start:i])
+			start = i + 1
+		}
+	}
+
+	return append(parts, s[start:]), !quoted
 }
 
 type stashingWriter struct {

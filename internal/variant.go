@@ -22,7 +22,12 @@ func (v *Variant) SetResponseHeader(header http.Header) {
 func (v *Variant) CacheKey() RequestKey {
 	vary := make([]string, len(v.headerNames))
 	for i, name := range v.headerNames {
-		vary[i] = name + "=" + v.r.Header.Get(name)
+		values, present := v.r.Header[name]
+		if present {
+			vary[i] = name + "=" + strings.Join(values, "\x00")
+		} else {
+			vary[i] = name
+		}
 	}
 
 	return RequestKey{
@@ -36,7 +41,10 @@ func (v *Variant) CacheKey() RequestKey {
 
 func (v *Variant) Matches(responseHeader http.Header) bool {
 	for _, name := range v.headerNames {
-		if responseHeader.Get(name) != v.r.Header.Get(name) {
+		responseValues, responsePresent := responseHeader[name]
+		requestValues, requestPresent := v.r.Header[name]
+
+		if responsePresent != requestPresent || !slices.Equal(responseValues, requestValues) {
 			return false
 		}
 	}
@@ -46,7 +54,9 @@ func (v *Variant) Matches(responseHeader http.Header) bool {
 func (v *Variant) VariantHeader() http.Header {
 	requestHeader := http.Header{}
 	for _, name := range v.headerNames {
-		requestHeader.Set(name, v.r.Header.Get(name))
+		if values, present := v.r.Header[name]; present {
+			requestHeader[name] = slices.Clone(values)
+		}
 	}
 	return requestHeader
 }
@@ -54,16 +64,20 @@ func (v *Variant) VariantHeader() http.Header {
 // Private
 
 func (v *Variant) parseVaryHeader(responseHeader http.Header) []string {
-	list := responseHeader.Get("Vary")
-	if list == "" {
-		return []string{}
-	}
-
-	names := strings.Split(list, ",")
-	for i, name := range names {
-		names[i] = http.CanonicalHeaderKey(strings.TrimSpace(name))
-	}
+	names := varyNames(responseHeader)
 	slices.Sort(names)
+	return slices.Compact(names)
+}
 
+func varyNames(header http.Header) []string {
+	names := []string{}
+	for _, line := range header.Values("Vary") {
+		for name := range strings.SplitSeq(line, ",") {
+			name = strings.TrimSpace(name)
+			if name != "" {
+				names = append(names, http.CanonicalHeaderKey(name))
+			}
+		}
+	}
 	return names
 }

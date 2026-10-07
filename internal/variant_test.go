@@ -68,3 +68,73 @@ func TestVariantMatches_missing_headers(t *testing.T) {
 	assert.True(t, v.Matches(http.Header{"Accept-Encoding": []string{"gzip"}}))
 	assert.False(t, v.Matches(http.Header{"Accept-Encoding": []string{"gzip"}, "Accept": []string{"text/html"}}))
 }
+
+func TestVariantCacheKey_reads_all_vary_lines(t *testing.T) {
+	for name, vary := range map[string][]string{
+		"accept first": {"Accept", "Cookie"},
+		"cookie first": {"Cookie", "Accept"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			r1 := httptest.NewRequest("GET", "/home", nil)
+			r1.Header.Set("Accept", "text/html")
+			r1.Header.Set("Cookie", "session=1")
+
+			r2 := httptest.NewRequest("GET", "/home", nil)
+			r2.Header.Set("Accept", "text/html")
+			r2.Header.Set("Cookie", "session=2")
+
+			v1 := NewVariant(r1)
+			v2 := NewVariant(r2)
+			v1.SetResponseHeader(http.Header{"Vary": vary})
+			v2.SetResponseHeader(http.Header{"Vary": vary})
+
+			assert.Equal(t, []string{"Accept", "Cookie"}, v1.headerNames)
+			assert.NotEqual(t, v1.CacheKey(), v2.CacheKey())
+			assert.False(t, v1.Matches(v2.VariantHeader()))
+		})
+	}
+}
+
+func TestVariantCacheKey_dedupes_vary_names(t *testing.T) {
+	v := NewVariant(httptest.NewRequest("GET", "/home", nil))
+	v.SetResponseHeader(http.Header{"Vary": []string{"Accept, accept", "ACCEPT"}})
+
+	assert.Equal(t, []string{"Accept"}, v.headerNames)
+}
+
+func TestVariantCacheKey_uses_all_values_of_varied_header(t *testing.T) {
+	r1 := httptest.NewRequest("GET", "/home", nil)
+	r1.Header.Set("Accept", "text/html")
+
+	r2 := httptest.NewRequest("GET", "/home", nil)
+	r2.Header.Set("Accept", "text/html")
+	r2.Header.Add("Accept", "application/json")
+
+	v1 := NewVariant(r1)
+	v2 := NewVariant(r2)
+	v1.SetResponseHeader(http.Header{"Vary": []string{"Accept"}})
+	v2.SetResponseHeader(http.Header{"Vary": []string{"Accept"}})
+
+	assert.NotEqual(t, v1.CacheKey(), v2.CacheKey())
+	assert.False(t, v1.Matches(v2.VariantHeader()))
+	assert.False(t, v2.Matches(v1.VariantHeader()))
+	assert.True(t, v2.Matches(v2.VariantHeader()))
+}
+
+func TestVariantCacheKey_distinguishes_absent_from_empty_header(t *testing.T) {
+	r1 := httptest.NewRequest("GET", "/home", nil)
+
+	r2 := httptest.NewRequest("GET", "/home", nil)
+	r2.Header.Set("Accept", "")
+
+	v1 := NewVariant(r1)
+	v2 := NewVariant(r2)
+	v1.SetResponseHeader(http.Header{"Vary": []string{"Accept"}})
+	v2.SetResponseHeader(http.Header{"Vary": []string{"Accept"}})
+
+	assert.NotEqual(t, v1.CacheKey(), v2.CacheKey())
+	assert.False(t, v1.Matches(v2.VariantHeader()))
+	assert.False(t, v2.Matches(v1.VariantHeader()))
+	assert.Empty(t, v1.VariantHeader())
+	assert.Equal(t, http.Header{"Accept": []string{""}}, v2.VariantHeader())
+}
