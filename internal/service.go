@@ -30,6 +30,7 @@ func (s *Service) Run() int {
 		logRequests:                  s.config.LogRequests,
 		gzipCompressionDisableOnAuth: s.config.GzipCompressionDisableOnAuth,
 		gzipCompressionJitter:        s.config.GzipCompressionJitter,
+		encodeQuerySemicolons:        s.config.EncodeQuerySemicolons,
 	}
 
 	handler := NewHandler(handlerOptions)
