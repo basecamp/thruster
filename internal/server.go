@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"time"
+	"sync"
 
 	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
@@ -20,6 +20,7 @@ type Server struct {
 	httpServer  *http.Server
 	httpsServer *http.Server
 	manager     *autocert.Manager
+	stopOnce    sync.Once
 }
 
 func NewServer(config *Config, handler http.Handler) *Server {
@@ -79,17 +80,25 @@ func (s *Server) Start() error {
 	}
 }
 
+// Stop gracefully shuts down the HTTP server(s): it closes the listeners so we
+// stop accepting new connections, then waits up to HttpDrainTimeout for
+// in-flight requests to finish. It is safe to call more than once -- only the
+// first call has any effect -- so that shutdown can be triggered both by a
+// termination signal and by the deferred cleanup in Service.Run without
+// shutting down twice.
 func (s *Server) Stop() {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
-	defer slog.Info("Server stopped")
+	s.stopOnce.Do(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), s.config.HttpDrainTimeout)
+		defer cancel()
+		defer slog.Info("Server stopped")
 
-	slog.Info("Server stopping")
+		slog.Info("Server stopping")
 
-	_ = s.httpServer.Shutdown(ctx)
-	if s.httpsServer != nil {
-		_ = s.httpsServer.Shutdown(ctx)
-	}
+		_ = s.httpServer.Shutdown(ctx)
+		if s.httpsServer != nil {
+			_ = s.httpsServer.Shutdown(ctx)
+		}
+	})
 }
 
 func (s *Server) certManager() *autocert.Manager {
