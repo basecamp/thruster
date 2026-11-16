@@ -1,3 +1,9 @@
+## v0.1.28 / 2026-11-16
+
+* Build with Go 1.27.4, update dependencies (#163)
+* Update Go to 1.27.3 (#161)
+* Build with Go 1.27.2, update dependencies (#158)
+
 ## v0.1.27 / 2026-09-28
 
 * Update dependencies (#154)
