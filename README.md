@@ -96,6 +96,7 @@ environment variables that you can set.
 | `EAB_HMAC_KEY`              | The Base64-encoded EAB HMAC key to use when provisioning TLS certificates, if required. | None |
 | `FORWARD_HEADERS`           | Whether to forward X-Forwarded-* and X-Request-ID headers from the client. | Disabled when running with TLS; enabled otherwise |
 | `LOG_REQUESTS`              | Log all requests. Set to `0` or `false` to disable request logging | Enabled |
+| `ENCODE_QUERY_SEMICOLONS`   | Set to `1` or `true` to encode raw `;` in query strings as `%3B`, so they're passed upstream as part of the value. Otherwise Go drops any query parameter containing a raw `;`. | Disabled |
 | `DEBUG`                     | Set to `1` or `true` to enable debug logging. | Disabled |
 
 To prevent naming clashes with your application's own environment variables,

@@ -72,6 +72,8 @@ type Config struct {
 
 	ForwardHeaders bool
 
+	EncodeQuerySemicolons bool
+
 	LogLevel    slog.Level
 	LogRequests bool
 }
@@ -113,6 +115,8 @@ func NewConfig() (*Config, error) {
 		HttpWriteTimeout: getEnvDuration("HTTP_WRITE_TIMEOUT", defaultHttpWriteTimeout),
 
 		H2CEnabled: getEnvBool("H2C_ENABLED", defaultH2CEnabled),
+
+		EncodeQuerySemicolons: getEnvBool("ENCODE_QUERY_SEMICOLONS", false),
 
 		LogLevel:    logLevel,
 		LogRequests: getEnvBool("LOG_REQUESTS", defaultLogRequests),
