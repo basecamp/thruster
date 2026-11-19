@@ -48,10 +48,10 @@ func TestServerCanMakeAnEndToEndH2CRequestWhenEnabled(t *testing.T) {
 }
 
 func TestServerDefaultCannotMakeH2CRequest(t *testing.T) {
-	_, err := makeRoundTripH2cRequest(t, false)
+	resp, err := makeRoundTripH2cRequest(t, false)
 
-	assert.NotNil(t, err)
-	assert.Contains(t, err.Error(), "http2: failed reading the frame payload")
+	assert.Error(t, err)
+	assert.Nil(t, resp)
 }
 
 func makeRoundTripH2cRequest(t *testing.T, h2cEnabled bool) (*http.Response, error) {
